@@ -1,0 +1,8 @@
+{
+  "name": "fenix",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

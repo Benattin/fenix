@@ -1,0 +1,4494 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FENIX</title>
+<link rel="icon" type="image/png" href="/fenix-icon.png">
+<link rel="apple-touch-icon" href="/fenix-icon.png">
+<style>
+  :root {
+    --theme: #ff6a1a;
+    --red: #e11d2e;
+    --violet: #8b5cf6;
+    --bg: #050506;
+    --panel: #0c0c10;
+    --ink: #f3f0ea;
+    --muted: #9a9388;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--ink);
+    font-family: Segoe UI, system-ui, sans-serif; }
+  body {
+    background:
+      radial-gradient(900px 500px at 50% -10%, rgba(255,106,26,.16), transparent 55%),
+      radial-gradient(700px 400px at 80% 110%, rgba(225,29,46,.08), transparent 50%),
+      var(--bg);
+  }
+  .logo {
+    font-family: ui-monospace, Cascadia Mono, Consolas, monospace;
+    font-weight: 700; letter-spacing: .28em;
+    font-size: clamp(42px, 11vw, 92px);
+    background: linear-gradient(90deg, var(--theme), var(--violet));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .rule {
+    width: min(420px, 70vw); height: 2px; border: 0; margin: 22px 0 28px;
+    background: linear-gradient(90deg, transparent, var(--theme), var(--violet), transparent);
+  }
+  #boot, #gate {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #000 url("/fenix-realm.png") center 38% / cover no-repeat;
+    transition: opacity .55s ease, visibility .55s;
+  }
+  #boot::before, #gate::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 50% 55% at 50% 40%, rgba(0,0,0,.15), rgba(0,0,0,.78));
+  }
+  #boot > *, #gate > * { position: relative; z-index: 1; }
+  .mark {
+    width: 92px; height: 92px; object-fit: contain; margin-bottom: 10px;
+    filter: drop-shadow(0 0 18px rgba(255,255,255,.28));
+  }
+  #boot.out, #gate.out { opacity: 0; visibility: hidden; pointer-events: none; }
+  .blink { color: #c8c2b8; letter-spacing: .38em; font-size: 12px;
+    animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .ver { margin-top: 48px; color: #5c574e; font-size: 11px; letter-spacing: .22em;
+    font-family: ui-monospace, Consolas, monospace; }
+  #go {
+    margin-top: 8px; padding: 14px 28px; cursor: pointer;
+    border: 1px solid var(--theme); color: var(--ink); background: transparent;
+    letter-spacing: .2em; font-size: 13px;
+    box-shadow: 0 0 24px rgba(255,106,26,.25);
+  }
+  #go:hover { background: rgba(255,106,26,.12); }
+  .hint { margin-top: 16px; color: var(--muted); font-size: 11px; letter-spacing: .28em; }
+  #app { display: none; min-height: 100%; padding: 12px 14px 28px; }
+  #app.on { display: block; }
+  header {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+  }
+  #brainMode {
+    flex: 1; background: var(--panel); border: 1px solid #222; color: #c8c2b8;
+    padding: 8px 10px; font-size: 12px; letter-spacing: .14em;
+    font-family: ui-monospace, Consolas, monospace;
+  }
+  .stage { display: flex; flex-direction: column; align-items: center; }
+  .orb-wrap { position: relative; width: clamp(150px, 36vw, 220px); aspect-ratio: 1; margin: 8px 0; }
+  #orb {
+    position: absolute; inset: 8%; border-radius: 50%; cursor: pointer;
+    background:
+      radial-gradient(circle at 40% 35%, #fff3, transparent 28%),
+      radial-gradient(circle at 50% 50%, var(--theme), #7a1408 62%, #1a0505 100%);
+    box-shadow: 0 0 28px rgba(255,106,26,.45), inset 0 0 24px rgba(225,29,46,.35);
+  }
+  #orb::before, #orb::after {
+    content: ""; position: absolute; inset: -18%; border-radius: 50%;
+    border: 1px solid rgba(255,106,26,.28); pointer-events: none;
+  }
+  #orb::after { inset: -32%; border-color: rgba(225,29,46,.18); }
+  #orb[data-state="idle"] { animation: pulse 2.8s ease-in-out infinite; }
+  #orb[data-state="listening"] { animation: waves 1.1s ease-in-out infinite; }
+  #orb[data-state="thinking"] { animation: pulse .45s ease-in-out infinite; }
+  #orb[data-state="speaking"] { animation: waves 1.8s ease-in-out infinite; }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); box-shadow: 0 0 22px rgba(255,106,26,.4); }
+    50% { transform: scale(1.06); box-shadow: 0 0 42px rgba(255,106,26,.75); }
+  }
+  @keyframes waves {
+    0%,100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.1); filter: brightness(1.25); }
+  }
+  .name { font-family: ui-monospace, Consolas, monospace; letter-spacing: .32em;
+    font-size: 18px; color: var(--theme); margin-bottom: 8px; }
+  .line { min-height: 1.3em; max-width: 720px; text-align: center; padding: 0 12px; font-size: 14px; }
+  #you { color: #d4c4b0; }
+  #him { color: var(--theme); margin-top: 4px; }
+  #stat { color: var(--muted); font-size: 12px; letter-spacing: .12em; margin: 8px 0 12px; }
+  .row { display: flex; gap: 8px; width: min(720px, 100%); padding: 0 4px; }
+  #typed {
+    flex: 1; background: var(--panel); border: 1px solid #2a2a30; color: var(--ink);
+    padding: 10px 12px; outline: none; font-size: 14px;
+  }
+  #typed:focus { border-color: var(--theme); }
+  .btn {
+    min-width: 46px; border: 1px solid var(--theme); background: #140a06; color: var(--ink);
+    cursor: pointer; font-size: 16px;
+  }
+  .btn:hover { background: rgba(255,106,26,.15); }
+  #brain { margin-top: 22px; background: #08080c; border: 1px solid #1c1c22; }
+  .bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; border-bottom: 1px solid #1c1c22;
+  }
+  .bar h2 { font-size: 14px; letter-spacing: .08em; }
+  .bar small { color: var(--muted); }
+  .grow { margin-left: auto; color: var(--muted); font-size: 12px; }
+  .ico { width: 32px; height: 28px; border: 1px solid #333; background: #101014; color: var(--ink); cursor: pointer; }
+  #graph { width: 100%; min-height: 280px; }
+  #graph svg { width: 100%; height: auto; display: block; }
+  .edge { fill: none; stroke: url(#edgeGrad); stroke-width: 1.35; stroke-dasharray: 8 11;
+    animation: dash 2.8s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -38; } }
+  .ring { transform-box: fill-box; transform-origin: center;
+    animation: breath 2.6s ease-in-out infinite; }
+  .core-g { transform-box: fill-box; transform-origin: center;
+    animation: breath 2.2s ease-in-out infinite; }
+  @keyframes breath {
+    0%,100% { opacity: .4; transform: scale(1); }
+    50% { opacity: .95; transform: scale(1.14); }
+  }
+  .flash { animation: flash .35s ease 4; }
+  @keyframes flash { 50% { filter: brightness(2.6); } }
+  #legend {
+    display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+    padding: 8px 12px 12px; font-size: 12px; color: #c8c2b8;
+  }
+  #cortex {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+    padding: 10px 12px; border-bottom: 1px solid #1c1c22;
+  }
+  #cortex .cx {
+    background: #0c0c10; border: 1px solid #222; padding: 8px 10px; min-width: 0;
+  }
+  #cortex .cx span {
+    display: block; font-size: 9px; letter-spacing: .16em; color: #7a746c;
+    margin-bottom: 4px; font-family: ui-monospace, Consolas, monospace;
+  }
+  #cortex .cx b {
+    display: block; font-size: 12px; font-weight: 600; color: #f3f0ea;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  @media (max-width: 720px) {
+    #cortex { grid-template-columns: 1fr 1fr; }
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .ok { margin-left: auto; color: #10b981; }
+  #modal {
+    display: none; position: fixed; inset: 0; z-index: 40;
+    background: rgba(0,0,0,.62); align-items: center; justify-content: center; padding: 16px;
+  }
+  #modal.on { display: flex; }
+  .card {
+    width: min(440px, 100%); background: #101014; border: 1px solid var(--theme); padding: 16px;
+  }
+  .card h3 { margin-bottom: 12px; letter-spacing: .08em; }
+  .card label { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 4px; }
+  .card input, .card select, .card textarea {
+    width: 100%; background: #0a0a0c; border: 1px solid #2a2a30; color: var(--ink);
+    padding: 8px; font: inherit;
+  }
+  .card textarea { min-height: 90px; resize: vertical; }
+  .acts { display: flex; gap: 8px; margin-top: 14px; }
+  .acts button { flex: 1; padding: 8px; cursor: pointer; border: 1px solid #444; background: #18181c; color: var(--ink); }
+  #saveN { border-color: var(--theme); }
+  #delN { border-color: var(--red); color: #fca5a5; }
+  @media (max-width: 640px) {
+    .ok { margin-left: 0; width: 100%; }
+    .grow { margin-left: 0; width: 100%; }
+  }
+  #acaoBadge {
+    min-width: 36px; text-align: center; padding: 6px 8px;
+    border: 1px solid var(--theme); color: var(--theme); font-size: 12px;
+    font-family: ui-monospace, Consolas, monospace; background: #140a06;
+  }
+  #gear { min-width: 40px; }
+  .hub { display: flex; gap: 6px; flex-wrap: wrap; margin: 18px 0 8px; }
+  .hub button {
+    flex: 1; min-width: 110px; padding: 8px 6px; cursor: pointer;
+    border: 1px solid #2a2a30; background: #0c0c10; color: var(--muted);
+    letter-spacing: .12em; font-size: 11px;
+  }
+  .hub button.on { border-color: var(--theme); color: var(--ink); box-shadow: 0 0 12px rgba(255,106,26,.2); }
+  .pan {
+    display: none; background: #08080c; border: 1px solid #1c1c22; padding: 12px;
+    animation: panin .35s ease;
+  }
+  .pan.on { display: block; }
+  @keyframes panin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .pan h3 { font-size: 13px; letter-spacing: .14em; color: var(--theme); margin-bottom: 10px; }
+  .warn { color: #fbbf24; font-size: 13px; padding: 8px 0; }
+  .ev { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #1a1a20; font-size: 13px; }
+  .ball { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .ev .when { color: var(--muted); min-width: 72px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  .nxt { color: var(--theme); font-size: 12px; }
+  .dayh { margin: 14px 0 6px; font-size: 11px; letter-spacing: .16em; color: #c8c2b8; }
+  .mail { padding: 8px 0; border-bottom: 1px solid #1a1a20; font-size: 13px; cursor: pointer; }
+  .mail .meta { color: var(--muted); font-size: 11px; }
+  .mail .snip { display: none; color: #d4c4b0; margin-top: 6px; font-size: 12px; }
+  .mail.open .snip { display: block; }
+  .secA { border-left: 2px solid var(--theme); padding-left: 10px; margin-bottom: 12px; }
+  .secI { padding-left: 10px; margin-bottom: 10px; }
+  .secR { padding-left: 10px; color: var(--muted); }
+  .secR h4 { cursor: pointer; }
+  .hid { display: none; }
+  .news a { color: var(--ink); text-decoration: none; }
+  .news a:hover { color: var(--theme); }
+  .nitem { padding: 7px 0; border-bottom: 1px solid #1a1a20; font-size: 13px; }
+  .digestbox { font-size: 14px; line-height: 1.55; color: #e8e4dc; }
+  #cfg {
+    display: none; position: fixed; inset: 0; z-index: 50;
+    background: rgba(0,0,0,.7); align-items: flex-start; justify-content: center;
+    overflow: auto; padding: 20px 12px;
+  }
+  #cfg.on { display: flex; }
+  .cfgcard { width: min(560px, 100%); background: #101014; border: 1px solid var(--theme); padding: 16px; }
+  .cfgcard h3 { margin: 16px 0 8px; letter-spacing: .1em; font-size: 13px; color: var(--theme); }
+  .cfgcard p.tip { font-size: 12px; color: var(--muted); margin: 0 0 8px; line-height: 1.45; }
+  .slot { border: 1px solid #2a2a30; padding: 10px; margin-bottom: 8px; }
+  .row2 { display: flex; gap: 8px; }
+  .row2 input, .row2 select { flex: 1; }
+  .mini { padding: 6px 10px; cursor: pointer; border: 1px solid #444; background: #18181c; color: var(--ink); margin-top: 6px; }
+</style>
+<style id="design-layer">
+:root {
+  --bg: #08080b;
+  --surface: #0e0e13;
+  --card: rgba(14,14,19,.74);
+  --border: rgba(255,255,255,.08);
+  --border-strong: rgba(255,106,26,.42);
+  --primary: #ff6a1a;
+  --primary-dim: rgba(255,106,26,.16);
+  --accent: #fb7185;
+  --txt: #f4f1ea;
+  --txt2: #b4aea4;
+  --txt3: #7a746c;
+  --green: #34d399;
+  --red: #f43f5e;
+  --yellow: #fbbf24;
+  --theme: var(--primary);
+  --ink: var(--txt);
+  --muted: var(--txt2);
+  --panel: var(--surface);
+  --violet: var(--accent);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 52px;
+  --radius: 12px;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --dur: .22s;
+  --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --brand: linear-gradient(120deg, var(--primary), var(--accent));
+}
+html, body {
+  background: var(--bg); color: var(--txt); font-family: var(--font);
+}
+body {
+  background:
+    radial-gradient(900px 480px at 18% -8%, rgba(255,106,26,.11), transparent 58%),
+    radial-gradient(720px 420px at 92% 8%, rgba(251,113,133,.08), transparent 52%),
+    radial-gradient(640px 380px at 50% 110%, rgba(255,106,26,.06), transparent 50%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body::before {
+  content: ""; position: fixed; inset: -30%; pointer-events: none; z-index: 0;
+  background: conic-gradient(from 180deg, transparent 0 20%, rgba(255,106,26,.07), transparent 40% 60%, rgba(251,113,133,.06), transparent 80%);
+  animation: auroraSpin 18s linear infinite;
+}
+body::after {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(rgba(255,255,255,.045) 0.7px, transparent 0.8px);
+  background-size: 22px 22px; opacity: .55;
+}
+#boot, #gate, #app, #modal, #cfg { position: relative; z-index: 1; }
+#boot::after, #gate::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,.025) 3px);
+  animation: scan 6s linear infinite; opacity: .35;
+}
+@keyframes auroraSpin { to { transform: rotate(360deg); } }
+@keyframes scan { to { background-position: 0 40px; } }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+.logo {
+  background: var(--brand);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  letter-spacing: .3em;
+}
+#go {
+  border-radius: var(--radius); border-color: var(--border-strong);
+  background: var(--primary-dim); transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+#go:hover { transform: translateY(-1px); box-shadow: 0 8px 26px rgba(255,106,26,.28); }
+#app.on { animation: rise .45s var(--ease); padding: var(--space-4) var(--space-5) var(--space-6);
+  max-width: 1120px; margin: 0 auto; }
+header {
+  position: sticky; top: 0; z-index: 8; gap: var(--space-2);
+  padding: var(--space-2); margin-bottom: var(--space-4);
+  background: var(--card); backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 8px 26px rgba(0,0,0,.28);
+}
+#brainMode, #apikey, #typed, #apikey {
+  border-radius: calc(var(--radius) - 4px);
+  border-color: var(--border); background: rgba(8,8,12,.55); color: var(--txt2);
+  letter-spacing: .12em;
+}
+#acaoBadge, #gear, #faceBtn, .btn, .ico, .mini, .hub button, .acts button {
+  border-radius: calc(var(--radius) - 4px); transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+#acaoBadge { border-color: var(--border-strong); color: var(--primary); font-family: var(--mono); }
+.btn, .ico, .mini { border-color: var(--border); background: var(--surface); }
+.btn:hover, .ico:hover, .mini:hover, .hub button:hover { border-color: var(--border-strong); background: var(--primary-dim); transform: translateY(-1px); }
+#orb {
+  box-shadow: 0 0 36px rgba(255,106,26,.4), inset 0 0 24px rgba(251,113,133,.25);
+}
+.name { letter-spacing: .34em; color: var(--primary); font-family: var(--mono); font-size: 13px; }
+#stat { color: var(--txt3); letter-spacing: .16em; text-transform: uppercase; font-size: 11px; }
+#you { color: var(--txt2); }
+#him { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#typed { border-radius: var(--radius); padding: var(--space-3) var(--space-4); }
+#typed:focus, #apikey:focus, .card input:focus, .cfgcard input:focus {
+  outline: 2px solid var(--primary-dim); border-color: var(--primary);
+}
+#brain, .pan, .card, .cfgcard {
+  background: var(--card); backdrop-filter: blur(18px);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 8px 26px rgba(0,0,0,.3);
+}
+#brain { margin-top: var(--space-5); overflow: hidden; }
+.bar { padding: var(--space-3) var(--space-4); }
+.bar h2, .pan h3, .cfgcard h3, .dayh {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--txt3); font-weight: 600;
+}
+.pan h3 { color: var(--primary); }
+.hub { gap: var(--space-2); margin: var(--space-5) 0 var(--space-3); }
+.hub button {
+  border-radius: 999px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border); background: var(--surface);
+}
+.hub button.on {
+  border-color: transparent; color: #1a0c08;
+  background: var(--brand); box-shadow: 0 6px 20px rgba(255,106,26,.28);
+}
+.pan { padding: var(--space-4); animation: rise .35s var(--ease); }
+.pan.on { border-color: var(--border-strong); }
+.ev, .mail, .nitem { border-color: var(--border); }
+.warn { color: var(--yellow); }
+.ok { color: var(--green); }
+.secA { border-left-color: var(--primary); }
+.empty, .tip { color: var(--txt3); }
+#modal .card, #cfg .cfgcard { border-color: var(--border-strong); }
+#cfg { z-index: 90; }
+::selection { background: var(--primary); color: #1a0c08; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; }
+::-webkit-scrollbar-track { background: transparent; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--primary); outline-offset: 2px;
+}
+#faceBtn { min-width: 40px; padding: 2px; }
+#faceBtn img { width: 28px; height: 28px; object-fit: contain; display: block; }
+body:has(#faceMode.on) #app,
+body:has(#faceMode.on) #boot,
+body:has(#faceMode.on) #gate { visibility: hidden; pointer-events: none; }
+#faceMode {
+  display: none; position: fixed; inset: 0; z-index: 80; color: #fff;
+  isolation: isolate; overflow: hidden; background: #000;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+#faceMode.on { display: block; }
+#faceMode::before { display: none; }
+#faceMode .scan, #faceMode .aurora, #faceMode .corn { display: none; }
+#faceTop { display: none; }
+#faceHead {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 4;
+  height: 64px; padding: 0 20px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+  background: linear-gradient(180deg, rgba(0,0,0,.82) 0%, rgba(0,0,0,.35) 70%, transparent 100%);
+}
+#faceHudTL {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  font-size: 10px; letter-spacing: .14em; color: #fff;
+}
+#faceHudTL > div { display: flex; align-items: center; }
+#faceHudTL .k { color: rgba(255,255,255,.4); margin-right: 6px; }
+#faceHudTL .abar {
+  display: inline-block; width: 56px; height: 2px;
+  background: rgba(255,255,255,.12);
+}
+#faceHudTL .abar i { display: block; height: 100%; width: 40%; background: #fff; }
+#faceClock { text-align: right; font-variant-numeric: tabular-nums; justify-self: end; }
+#faceClock b {
+  display: block; font-size: 22px; font-weight: 500;
+  letter-spacing: .08em; color: #fff; line-height: 1;
+}
+#faceClock span {
+  display: block; margin-top: 4px; font-size: 9px; letter-spacing: .18em; color: rgba(255,255,255,.4);
+}
+#faceBrand {
+  display: flex; align-items: center; gap: 8px; margin-right: 8px;
+  color: #fff; background: none; -webkit-text-fill-color: #fff;
+}
+#faceBrand img { width: 22px; height: 22px; object-fit: contain; }
+#faceBrand b { font-size: 12px; letter-spacing: .2em; font-weight: 700; }
+#faceNav {
+  display: flex; gap: 0; justify-self: center;
+}
+#faceNav button {
+  border: 0; background: transparent; color: rgba(255,255,255,.5); cursor: pointer;
+  font: 9px ui-monospace, Consolas, monospace; letter-spacing: .12em;
+  text-transform: uppercase; padding: 6px 8px;
+}
+#faceNav button:hover { color: #fff; }
+#faceAlerts {
+  position: absolute; top: 66px; left: 50%; transform: translateX(-50%);
+  z-index: 5; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: 56vw; pointer-events: none;
+}
+#faceAlerts[hidden] { display: none !important; }
+#faceAlerts .al {
+  background: rgba(0,0,0,.82); border: 1px solid rgba(251,191,36,.4);
+  color: #fbbf24; font-size: 10px; letter-spacing: .08em; padding: 5px 10px;
+}
+#faceAlerts .al.dim {
+  border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.55);
+}
+#faceStage {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+}
+#faceStage::after {
+  content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.7) 0%, transparent 12%),
+    linear-gradient(0deg, rgba(0,0,0,.72) 0%, transparent 14%);
+}
+#faceRealm {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; object-position: 50% 38%;
+  pointer-events: none; z-index: 0; opacity: .95;
+}
+#faceGlobo { display: none; }
+#faceOrb {
+  position: absolute; left: 50%; top: 50%;
+  width: min(42vmin, 360px); aspect-ratio: 3 / 4;
+  transform: translate(-50%, -50%);
+  cursor: pointer; z-index: 2; pointer-events: auto;
+  background: none; border-radius: 0; box-shadow: none;
+}
+#faceOrb::before {
+  display: block; content: ""; position: absolute; inset: -14px;
+  pointer-events: none;
+  background:
+    linear-gradient(#fff, #fff) top left / 22px 1px no-repeat,
+    linear-gradient(#fff, #fff) top left / 1px 22px no-repeat,
+    linear-gradient(#fff, #fff) top right / 22px 1px no-repeat,
+    linear-gradient(#fff, #fff) top right / 1px 22px no-repeat,
+    linear-gradient(#fff, #fff) bottom left / 22px 1px no-repeat,
+    linear-gradient(#fff, #fff) bottom left / 1px 22px no-repeat,
+    linear-gradient(#fff, #fff) bottom right / 22px 1px no-repeat,
+    linear-gradient(#fff, #fff) bottom right / 1px 22px no-repeat;
+  opacity: .7;
+}
+#faceOrb::after { display: none; }
+#faceKnight {
+  width: 100%; height: 100%; object-fit: contain; object-position: center;
+  pointer-events: none; display: block; position: relative; z-index: 2;
+  background: none; mix-blend-mode: normal;
+  filter: drop-shadow(0 0 16px rgba(255,255,255,.12));
+}
+#faceMode[data-s="listening"] #faceOrb::before { opacity: 1; }
+#faceMode[data-s="thinking"] #faceKnight { opacity: .88; }
+#faceMode[data-s="speaking"] #faceOrb { animation: speakPulse 1.2s ease-in-out infinite; }
+#faceMode[data-s="speaking"] #faceKnight { filter: drop-shadow(0 0 22px rgba(255,255,255,.32)); }
+#faceMode[data-s="paused"] #faceKnight { opacity: .7; }
+#faceState { display: inline; letter-spacing: .16em; color: #fff; font-weight: 500; }
+#faceLeg {
+  position: absolute; left: 50%; bottom: 78px; transform: translateX(-50%);
+  z-index: 3; max-width: 34vw; text-align: center;
+  font-size: 12px; letter-spacing: .03em; color: #eee;
+  line-height: 1.45; pointer-events: none;
+  text-shadow: 0 2px 16px #000;
+}
+#faceDock {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  z-index: 4; display: flex; gap: 12px; align-items: center;
+  padding: 8px 14px;
+  background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.18);
+}
+#faceTalk {
+  min-width: 92px; padding: 7px 14px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.35); background: transparent; color: #fff;
+  font: 10px ui-monospace, Consolas, monospace; letter-spacing: .2em;
+}
+#faceTalk:hover { border-color: #fff; background: rgba(255,255,255,.06); }
+#faceTalk[data-mode="go"] { border-color: #9c9; color: #9c9; }
+#faceCmd {
+  width: min(280px, 36vw); border: 0; border-bottom: 1px solid rgba(255,255,255,.28);
+  background: transparent; color: #fff; padding: 7px 2px;
+  font: 12px ui-monospace, Consolas, monospace; outline: none;
+}
+#faceCmd:focus { border-bottom-color: #fff; }
+#faceCmd::placeholder { color: rgba(255,255,255,.35); }
+#faceHud {
+  position: absolute; left: 20px; right: 20px; top: 76px; bottom: 86px; z-index: 3;
+  display: grid; grid-template-columns: 200px 1fr 200px;
+  grid-template-rows: 1fr 1fr; gap: 10px; pointer-events: none;
+}
+#faceRail {
+  position: absolute; left: 20px; bottom: 16px; width: 200px; height: 56px; z-index: 4;
+  padding: 8px 10px; overflow: hidden;
+  background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.16);
+  pointer-events: auto;
+}
+#faceRail h4 {
+  font-size: 8px; letter-spacing: .2em; color: rgba(255,255,255,.45); margin: 0 0 4px;
+}
+#faceHist { overflow: hidden; height: 28px; }
+.hist {
+  padding: 0; border: 0; cursor: pointer; font-size: 10px;
+  color: rgba(255,255,255,.65); line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hist:hover { color: #fff; }
+.hist b { display: inline; color: #fff; font-weight: 600; margin-right: 6px; }
+.hist i { display: none; }
+#faceVault {
+  position: absolute; inset: 12% 16%; z-index: 6;
+  background: rgba(4,4,8,.94); border: 1px solid rgba(255,255,255,.2);
+  padding: 16px 18px;
+  display: none; flex-direction: column; min-height: 0;
+}
+#faceVault.on { display: flex; }
+#vaultPath { font-size: 11px; letter-spacing: .1em; color: rgba(244,239,230,.5); margin-bottom: 10px; }
+.vaultActs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.vaultActs button, .vaultAdd {
+  border: 1px solid rgba(244,239,230,.3); background: transparent; color: #f4efe6;
+  font: 9px ui-monospace, Consolas, monospace; letter-spacing: .14em;
+  padding: 6px 10px; cursor: pointer;
+}
+.vaultAdd input { display: none; }
+#vaultDrop {
+  border: 1px dashed rgba(244,239,230,.28); padding: 16px; text-align: center;
+  font-size: 11px; color: rgba(244,239,230,.5); margin-bottom: 10px;
+}
+#vaultDrop.hot { border-color: #f4efe6; color: #f4efe6; }
+#vaultList { list-style: none; overflow: auto; flex: 1; min-height: 0; }
+#vaultList li {
+  display: flex; justify-content: space-between; gap: 10px;
+  padding: 8px 4px; border-bottom: 1px solid rgba(244,239,230,.08);
+  cursor: pointer; font-size: 12px; color: #f4efe6;
+}
+#vaultList li span { color: rgba(244,239,230,.4); font-size: 10px; }
+#vaultList button {
+  margin-left: 8px; border: 1px solid rgba(244,239,230,.35); background: transparent;
+  color: #f4efe6; font: 8px ui-monospace, Consolas, monospace; letter-spacing: .12em;
+  padding: 3px 7px; cursor: pointer;
+}
+#faceHud .fhud:nth-child(1) { grid-column: 1; grid-row: 1; }
+#faceHud .fhud:nth-child(2) { grid-column: 1; grid-row: 2; }
+#faceHud .fhud:nth-child(3) { grid-column: 3; grid-row: 1; }
+#faceHud .fhud:nth-child(4) { grid-column: 3; grid-row: 2; }
+.fhud {
+  pointer-events: auto; align-self: stretch;
+  background: rgba(0,0,0,.78); border: 1px solid rgba(255,255,255,.18);
+  padding: 10px 11px; overflow: hidden; display: flex; flex-direction: column;
+}
+.fhud h4 {
+  margin: 0 0 8px; font-size: 9px; letter-spacing: .2em; color: #fff; font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.fhud h4 em {
+  font-style: normal; font-weight: 500; letter-spacing: .08em;
+  color: rgba(255,255,255,.4); font-size: 8px;
+}
+.fhud > div { overflow: auto; flex: 1; min-height: 0; }
+.fhud, .fhud .mchip, .fhud .th, .fhud .mute, .fhud .clang, .fhud .abit {
+  font-size: 10px; color: rgba(255,255,255,.72); line-height: 1.45;
+}
+.fhud .mchip { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.fhud .mchip:last-child { border-bottom: 0; }
+.fhud .mchip i {
+  display: block; font-style: normal; font-size: 8px; letter-spacing: .14em;
+  color: rgba(255,255,255,.38); margin-bottom: 2px;
+}
+.fhud .mchip b, .fhud .abit b { display: inline; color: #f4efe6; font-weight: 600; letter-spacing: .08em; }
+.fhud .abit { padding: 4px 0; border-bottom: 1px solid rgba(244,239,230,.08); }
+.fhud .th {
+  display: grid; grid-template-columns: 52px 12px 1fr; gap: 6px; align-items: start;
+  padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.fhud .th .tt { color: rgba(255,255,255,.32); font-variant-numeric: tabular-nums; }
+.fhud .th .tk {
+  width: 7px; height: 7px; border-radius: 50%; margin-top: 4px;
+  background: rgba(255,255,255,.35);
+}
+.fhud .th.k-intent .tk { background: #fff; }
+.fhud .th.k-mem .tk { background: #9cf; }
+.fhud .th.k-brain .tk { background: #fd6; }
+.fhud .th.k-code .tk { background: #9f9; }
+.fhud .th.k-err .tk { background: #f66; }
+#faceMode[data-s="thinking"] #faceSt .th:last-child .tk { animation: thinkDot .7s ease-in-out infinite; }
+@keyframes thinkDot { 50% { opacity: .25; transform: scale(1.35); } }
+.fhud pre {
+  margin: 6px 0 0; white-space: pre; overflow: auto; max-height: 88px;
+  color: #d8d8d8; font: 10px/1.45 ui-monospace, Consolas, monospace;
+}
+.fhud .cbar { display: flex; gap: 6px; margin-top: 8px; }
+.fhud .cbar button {
+  pointer-events: auto; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.28); background: transparent; color: #fff;
+  font: 8px ui-monospace, Consolas, monospace; letter-spacing: .14em;
+  padding: 4px 8px;
+}
+.fhud .cbar button:hover { border-color: #fff; }
+.fhud .clang {
+  display: inline-block; letter-spacing: .16em; color: #fff; margin-bottom: 4px;
+}
+#faceHint { display: none; }
+#faceTick, #faceMap, #faceRuler { display: none; }
+@keyframes speakPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.04); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes breathe {
+  0%,100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.03); }
+}
+#faceSheet {
+  position: absolute; inset: 8% 6% 8%; z-index: 6;
+  background: rgba(6,6,10,.94); backdrop-filter: blur(22px);
+  border: 1px solid rgba(255,255,255,.2); border-radius: 8px;
+  padding: 16px 18px; overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,.45);
+  display: flex; flex-direction: column;
+}
+#faceSheet[hidden] { display: none !important; }
+.fsHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+.fsHead h3 { letter-spacing: .16em; font-size: 12px; color: rgba(255,255,255,.55); }
+.fsActs { display: flex; gap: 8px; }
+#faceSheetX, #faceCopy {
+  border: 1px solid rgba(255,255,255,.28); background: transparent; color: #fff;
+  padding: 6px 12px; cursor: pointer; font: 10px ui-monospace, Consolas, monospace; letter-spacing: .14em;
+}
+#faceSheetX:hover, #faceCopy:hover { border-color: #fff; }
+#faceSheetBody { flex: 1; overflow: auto; min-height: 0; }
+#faceSheetBody h4 { font-size: 11px; letter-spacing: .14em; color: #fff; margin: 14px 0 8px; }
+#faceSheetBody a { display: block; color: #eee; text-decoration: none; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.1); font-size: 14px; line-height: 1.4; }
+#faceSheetBody a:hover { color: #fff; }
+#faceSheetBody .studio {
+  display: grid; grid-template-columns: 44px 1fr; border: 1px solid rgba(255,255,255,.12);
+  background: #07070a;
+}
+#faceSheetBody .ln {
+  padding: 12px 8px; text-align: right; color: rgba(255,255,255,.28);
+  font: 12px/1.55 ui-monospace, Consolas, monospace; user-select: none;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+#faceSheetBody .studio pre {
+  margin: 0; padding: 12px 14px; overflow: auto;
+  font: 12px/1.55 ui-monospace, Consolas, monospace; color: #e8e8e8; white-space: pre;
+}
+#faceSheetBody .kw { color: #9cf; } #faceSheetBody .st { color: #9f9; }
+#faceSheetBody .cmt { color: #666; } #faceSheetBody .num { color: #fd6; }
+#faceAgents {
+  position: absolute; inset: 8% 4% 8%; z-index: 6;
+  display: none; grid-template-columns: 1fr minmax(240px, 300px); gap: 16px;
+  background: rgba(8,8,11,.94); backdrop-filter: blur(22px);
+  border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
+}
+#faceAgents.on { display: grid; }
+#agSvgHost { min-height: 320px; }
+#agSvgHost svg { width: 100%; height: auto; display: block; }
+.agSide { overflow: auto; }
+.agResumo { font-size: 12px; color: var(--txt2); margin-bottom: 12px; line-height: 1.5; }
+.agCard { border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 12px; }
+.agCard h3 { font-size: 14px; margin-bottom: 6px; }
+.agCard p { font-size: 12px; color: var(--txt2); margin: 4px 0; }
+#agRun { display: none; margin-top: 10px; width: 100%; padding: 8px; border-radius: 999px;
+  border: 1px solid var(--border-strong); background: var(--primary-dim); color: var(--txt); cursor: pointer; }
+#agRun.show { display: block; }
+#agRun:disabled { opacity: .5; cursor: wait; }
+.agList { list-style: none; }
+.agList li { display: flex; gap: 8px; align-items: center; padding: 7px 0; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+.agList li.on { color: var(--primary); }
+.agdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.agdot.ok { background: var(--green); } .agdot.stale { background: var(--yellow); }
+.agdot.error { background: var(--red); } .agdot.idle, .agdot.off { background: var(--txt3); }
+#agSvgHost .spin { transform-box: fill-box; transform-origin: center; animation: spin 18s linear infinite; }
+#agSvgHost .spinr { transform-box: fill-box; transform-origin: center; animation: spin 28s linear infinite reverse; }
+#agSvgHost .urg { animation: urg 1.1s ease-in-out infinite; }
+#agSvgHost .agerr { transform-box: fill-box; transform-origin: center; animation: agerr .7s ease-in-out infinite; }
+@keyframes urg { 50% { opacity: .3; } }
+@keyframes agerr { 50% { transform: scale(1.14); } }
+@media (max-width: 720px) {
+  #faceAgents { grid-template-columns: 1fr; inset: 4% 2%; overflow: auto; }
+  #agSvgHost .agsub { display: none; }
+}
+#graph { max-height: 360px; }
+#brain { border-color: var(--border); }
+@media (max-width: 640px) {
+  #app.on { padding: var(--space-3); }
+  header { flex-wrap: wrap; }
+  #faceMode.on { display: block; }
+  #faceHead { height: auto; grid-template-columns: 1fr; padding: 8px 10px; }
+  #faceNav { display: none; }
+  #faceOrb { width: min(56vmin, 280px); }
+  #faceRail, #faceHud { display: none; }
+  #faceVault { inset: 8% 4% 10%; }
+  #faceLeg { bottom: 72px; max-width: 78vw; }
+  .orb-wrap { width: clamp(130px, 42vw, 180px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+<style id="face-chat">
+#faceShell {
+  position: absolute; inset: 0; z-index: 3;
+  display: grid; grid-template-columns: 268px minmax(0, 1fr) 300px;
+  pointer-events: none;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+#faceSide, #faceMain, #faceCfg, #faceDock, #faceSide input, #faceMain button, #faceCfg button, #faceCfg input, #faceCfg textarea, #faceFind, #faceCmd, #faceHist, #faceThread {
+  pointer-events: auto;
+}
+#faceSide {
+  display: flex; flex-direction: column; min-height: 0;
+  background: rgba(12,12,14,.86); backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(255,255,255,.06);
+}
+#faceSearch { padding: 12px 12px 8px; }
+#faceFind {
+  width: 100%; border: 0; border-radius: 8px; outline: none;
+  background: rgba(255,255,255,.06); color: #ececec;
+  padding: 8px 12px 8px 32px; font: 13px/1.3 "Segoe UI", system-ui, sans-serif;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238c8c8c' stroke-width='1.6'><circle cx='7' cy='7' r='4.5'/><path d='M10.5 10.5 L13.5 13.5'/></svg>");
+  background-repeat: no-repeat; background-position: 10px 50%;
+}
+#faceFind::placeholder { color: #8c8c8c; }
+#faceHist {
+  flex: 1; overflow: auto; min-height: 0; padding: 4px 8px 8px; height: auto;
+}
+#faceHist .hist {
+  display: grid; grid-template-columns: 36px 1fr auto; gap: 8px; align-items: center;
+  padding: 8px 8px; border-radius: 10px; cursor: pointer;
+  color: #c8c8c8; font-size: 13px; line-height: 1.3;
+  white-space: normal; overflow: hidden;
+}
+#faceHist .hist:hover, #faceHist .hist.on { background: rgba(255,255,255,.06); color: #fff; }
+#faceHist .hist img, #faceSideFoot img, #faceBrand img, .cfgAv img {
+  width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: #2a2a30;
+}
+#faceHist .hist > div { min-width: 0; }
+#faceHist .hist b { display: block; font-size: 13px; font-weight: 600; color: #f2f2f2; margin: 0; }
+#faceHist .hist i {
+  display: block; font-style: normal; font-size: 12px; color: #8c8c8c;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#faceHist .hist span { font-size: 11px; color: #6e6e6e; }
+#faceHist .mute { padding: 16px 10px; color: #6e6e6e; font-size: 12px; }
+#faceSideFoot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-top: 1px solid rgba(255,255,255,.06);
+  font-size: 13px; color: #d0d0d0;
+}
+#faceMain {
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: rgba(16,16,18,.55); backdrop-filter: blur(10px);
+}
+#faceHead {
+  position: relative; top: auto; left: auto; right: auto; z-index: 2;
+  height: 48px; padding: 0 10px 0 14px;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(12,12,14,.35); border-bottom: 1px solid rgba(255,255,255,.05);
+  grid-template-columns: none;
+}
+#faceHudTL, #faceClock { display: none; }
+#faceBrand { margin: 0; gap: 8px; color: #f2f2f2; }
+#faceBrand .plus {
+  width: 28px; height: 28px; border: 0; border-radius: 8px; cursor: pointer;
+  background: transparent; color: #c8c8c8; font-size: 20px; line-height: 1;
+}
+#faceBrand .plus:hover { background: rgba(255,255,255,.08); color: #fff; }
+#faceBrand b { font-size: 14px; letter-spacing: 0; font-weight: 600; text-transform: none; }
+#faceStatus { font-size: 11px; color: #8c8c8c; margin-left: 6px; font-weight: 400; }
+#faceMode[data-s="listening"] #faceStatus { color: #86efac; }
+#faceMode[data-s="thinking"] #faceStatus { color: #fbbf24; }
+#faceMode[data-s="speaking"] #faceStatus { color: #e8e8e8; }
+#faceMode[data-s="listening"] #faceMic { box-shadow: 0 0 0 4px rgba(134,239,172,.22); }
+#faceMode[data-s="thinking"] #faceDock { border-color: rgba(251,191,36,.35); }
+#faceThread .bub.think { display: flex; gap: 5px; align-items: center; min-width: 52px; padding: 12px 16px; }
+#faceThread .bub.think i {
+  width: 6px; height: 6px; border-radius: 50%; background: #bbb;
+  animation: thinkDot .9s ease-in-out infinite;
+}
+#faceThread .bub.think i:nth-child(2) { animation-delay: .15s; }
+#faceThread .bub.think i:nth-child(3) { animation-delay: .3s; }
+#faceHud { display: none !important; }
+#faceNav { justify-self: auto; margin-left: auto; flex-wrap: wrap; max-width: 52%; justify-content: flex-end; }
+#faceNav button {
+  font: 11px "Segoe UI", system-ui, sans-serif; letter-spacing: .02em;
+  text-transform: none; color: #8c8c8c; padding: 6px 7px;
+}
+#faceNav button:hover { color: #fff; }
+#faceGearBtn {
+  border: 0; background: transparent; color: #b0b0b0; cursor: pointer;
+  width: 36px; height: 36px; border-radius: 8px; font-size: 16px;
+}
+#faceGearBtn:hover { background: rgba(255,255,255,.08); color: #fff; }
+#faceTalk {
+  min-width: 0; padding: 6px 10px; border-radius: 8px; border-color: rgba(255,255,255,.12);
+  font: 11px "Segoe UI", system-ui, sans-serif; letter-spacing: .04em;
+}
+#faceAlerts {
+  position: relative; top: auto; left: auto; transform: none;
+  max-width: none; justify-content: flex-start; padding: 8px 16px 0; pointer-events: none;
+}
+#faceThread {
+  flex: 1; overflow: auto; min-height: 0;
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 18px 18% 12px;
+}
+#faceThread .bub {
+  max-width: 72%; padding: 10px 14px; border-radius: 16px;
+  font-size: 14px; line-height: 1.5; color: #ececec;
+  white-space: pre-wrap; word-break: break-word;
+}
+#faceThread .bub.a { align-self: flex-start; background: rgba(44,44,48,.92); border-bottom-left-radius: 6px; }
+#faceThread .bub.u { align-self: flex-end; background: rgba(58,58,64,.92); border-bottom-right-radius: 6px; }
+#faceThread .emptyChat {
+  margin: auto; color: rgba(255,255,255,.35); font-size: 14px; text-align: center;
+}
+#faceDock {
+  position: relative; left: auto; bottom: auto; transform: none;
+  width: auto; margin: 8px 16px 16px; padding: 8px 10px 8px 6px;
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(32,32,36,.92); border: 1px solid rgba(255,255,255,.08);
+  border-radius: 24px;
+}
+#facePlus, #faceMic {
+  width: 36px; height: 36px; border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: #c8c8c8; font-size: 20px; line-height: 1;
+}
+#faceMic {
+  background:
+    radial-gradient(circle at 50% 38%, #c8c8c8 0 5px, transparent 5.5px),
+    linear-gradient(#c8c8c8, #c8c8c8) 50% 62% / 2px 7px no-repeat,
+    radial-gradient(transparent 0 7px, #c8c8c8 7.5px 8.5px, transparent 9px) 50% 36% / 16px 16px no-repeat;
+}
+#facePlus:hover, #faceMic:hover { background: rgba(255,255,255,.08); color: #fff; }
+#faceCmd {
+  flex: 1; width: auto; min-width: 0; border: 0;
+  background: transparent; color: #f2f2f2; padding: 8px 4px;
+  font: 14px "Segoe UI", system-ui, sans-serif;
+}
+#faceCmd::placeholder { color: #7a7a7a; }
+#faceCfg {
+  display: flex; flex-direction: column; min-height: 0; overflow: auto;
+  background: rgba(14,14,16,.9); backdrop-filter: blur(18px);
+  border-left: 1px solid rgba(255,255,255,.06);
+  padding: 14px 16px 20px; color: #d8d8d8;
+}
+#faceMode:not(.cfg-on) #faceShell { grid-template-columns: 268px minmax(0, 1fr) 0; }
+#faceMode:not(.cfg-on) #faceCfg { display: none; }
+#faceCfg .cfgTop {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 14px; font-weight: 600; color: #f2f2f2; margin-bottom: 16px;
+}
+#faceCfgX {
+  border: 0; background: transparent; color: #8c8c8c; cursor: pointer;
+  width: 28px; height: 28px; border-radius: 8px; font-size: 18px;
+}
+#faceCfgX:hover { background: rgba(255,255,255,.08); color: #fff; }
+.cfgAv { display: flex; justify-content: center; margin: 8px 0 18px; }
+.cfgAv img { width: 72px; height: 72px; border-radius: 50%; }
+#faceCfg label {
+  display: block; font-size: 12px; color: #8c8c8c; margin: 10px 0 4px;
+}
+#faceCfg input, #faceCfg textarea {
+  width: 100%; border: 1px solid rgba(255,255,255,.1); border-radius: 8px;
+  background: rgba(255,255,255,.05); color: #ececec; padding: 8px 10px;
+  font: 13px "Segoe UI", system-ui, sans-serif;
+}
+#faceCfg textarea { min-height: 110px; resize: vertical; }
+#faceCfg .tog {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 16px; color: #d0d0d0; font-size: 13px;
+}
+#faceCfg .tog span { display: block; font-size: 12px; color: #8c8c8c; font-weight: 400; }
+#faceCfg .tog input { width: 36px; accent-color: #6b8afd; }
+#faceHud {
+  position: relative; left: auto; right: auto; top: auto; bottom: auto;
+  display: flex; flex-direction: column; gap: 10px; margin-top: 18px;
+  grid-template-columns: none; grid-template-rows: none; pointer-events: auto;
+}
+#faceHud .fhud {
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px; max-height: 140px;
+}
+#faceHud .fhud:nth-child(n) { grid-column: auto; grid-row: auto; }
+#faceRail, #faceLeg { display: none; }
+#faceOrb { pointer-events: none; opacity: .42; }
+#faceMode[data-s="listening"] #faceOrb, #faceMode[data-s="speaking"] #faceOrb { opacity: .7; }
+@media (max-width: 980px) {
+  #faceShell { grid-template-columns: minmax(0, 1fr) !important; }
+  #faceSide, #faceCfg { display: none; }
+  #faceThread { padding: 16px 16px 8px; }
+}
+</style>
+</head>
+<body>
+<div id="boot">
+  <img class="mark" src="/fenix-icon.png" alt="">
+  <div class="logo">FENIX</div>
+  <hr class="rule">
+  <div class="blink">SINCRONIZANDO DADOS...</div>
+  <div class="ver">v5.0 · REBUILD</div>
+</div>
+<div id="gate" class="out">
+  <img class="mark" src="/fenix-icon.png" alt="">
+  <div class="logo">FENIX</div>
+  <hr class="rule">
+  <button type="button" id="go">► ATIVAR SISTEMA</button>
+  <div class="hint">CLIQUE PARA INICIAR</div>
+</div>
+<div id="app">
+  <header>
+    <div id="brainMode">CÉREBRO · LOCAL · SEM API</div>
+    <div id="acaoBadge" title="E-mails de ação">⚡ 0</div>
+    <button class="btn" id="gear" type="button" title="Configurações">⚙</button>
+  </header>
+  <div class="stage">
+    <div class="orb-wrap"><div id="orb" data-state="idle" title="Clique para ouvir"></div></div>
+    <div class="name">FENIX</div>
+    <p class="line" id="you"></p>
+    <p class="line" id="him"></p>
+    <p id="stat">SISTEMA PRONTO</p>
+    <div class="row">
+      <input id="typed" placeholder="ou digite e tecle Enter" autocomplete="off">
+      <button class="btn" id="mic" type="button" title="Microfone">🎤</button>
+      <button class="btn" id="stop" type="button" title="Pausar">❚❚</button>
+    </div>
+  </div>
+  <section id="brain">
+    <div class="bar">
+      <h2>🧠 SECOND BRAIN</h2>
+      <small>contexto vivo da sua vida</small>
+      <span class="grow" id="count"></span>
+      <button class="ico" id="addN" type="button">+</button>
+      <button class="ico" id="relN" type="button">↻</button>
+    </div>
+    <div id="cortex">
+      <div class="cx"><span>INTENÇÃO</span><b id="cxIntent">chat</b></div>
+      <div class="cx"><span>RECALL</span><b id="cxRecall">em espera</b></div>
+      <div class="cx"><span>EPISÓDIOS</span><b id="cxEps">0</b></div>
+      <div class="cx"><span>SITUAÇÃO</span><b id="cxSit">cérebro pronto</b></div>
+    </div>
+    <div id="graph"></div>
+    <div id="legend"></div>
+  </section>
+  <nav class="hub">
+    <button type="button" data-pan="agenda">AGENDA</button>
+    <button type="button" data-pan="mail">E-MAILS</button>
+    <button type="button" data-pan="news">NOTÍCIAS</button>
+    <button type="button" data-pan="digest">DIGEST</button>
+  </nav>
+  <div class="pan" id="panAgenda"><h3>AGENDA</h3><div id="agendaBox"></div></div>
+  <div class="pan" id="panMail"><h3>E-MAILS</h3><div id="mailBox"></div></div>
+  <div class="pan" id="panNews"><h3>NOTÍCIAS</h3><div id="newsBox"></div></div>
+  <div class="pan" id="panDigest"><h3>MORNING DIGEST</h3><div class="digestbox" id="digestBox"></div></div>
+</div>
+<div id="modal">
+  <div class="card">
+    <h3>NOTA</h3>
+    <label>Título</label>
+    <input id="edTitle">
+    <label>Área</label>
+    <select id="edArea"></select>
+    <label>Conteúdo</label>
+    <textarea id="edBody"></textarea>
+    <div class="acts">
+      <button id="saveN" type="button">Salvar</button>
+      <button id="delN" type="button">Excluir</button>
+      <button id="clsN" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+<div id="cfg">
+  <div class="cfgcard">
+    <h3>MOTOR</h3>
+    <div class="row2">
+      <select id="tierSel">
+        <option value="eco">ECONÔMICO · local</option>
+        <option value="eq" selected>EQUILIBRADO · Ollama se houver</option>
+        <option value="max">MÁXIMO · Ollama</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c8c2b8">
+        <input type="checkbox" id="ecoChk" checked> Modo economia
+      </label>
+    </div>
+    <h3>AGENDA</h3>
+    <p class="tip">Google Agenda no computador → ⚙ Configurações → clique na agenda à esquerda → Integrar agenda → copie o Endereço secreto em formato iCal.</p>
+    <p class="tip">Este link dá acesso de leitura à sua agenda. Ele fica salvo só no seu navegador e nunca é enviado para a IA.</p>
+    <div id="calSlots"></div>
+    <button class="mini" id="addCal" type="button">+ adicionar agenda</button>
+    <h3>E-MAILS</h3>
+    <p class="tip">(a) Ative a verificação em 2 etapas em myaccount.google.com/security. (b) Só depois: myaccount.google.com/apppasswords → app Jarvis → copie a senha de 16 letras. (c) Cole aqui. Não é a senha normal do Gmail.</p>
+    <p class="tip">Sua senha de app fica salva só no seu navegador e viaja apenas até a antena local e o seu provedor. Para a triagem, remetente, assunto e um trecho podem ir ao cérebro local/Ollama. O Fenix só LÊ: nunca envia, responde, apaga ou marca nada.</p>
+    <div id="mailSlots"></div>
+    <button class="mini" id="addMail" type="button">+ adicionar conta</button>
+    <div class="acts" style="margin-top:16px">
+      <button id="saveCfg" type="button">Salvar</button>
+      <button id="clsCfg" type="button">Fechar</button>
+    </div>
+  </div>
+</div>
+<script>
+const CONFIG = {
+  name: "Fenix",
+  address: "senhor",
+  themeColor: "#ff6a1a",
+  persona: "formal britânico (mordomo)",
+  wakeWord: "ei fenix",
+  voiceGender: "feminina",
+  model: "llama3.2",
+  chat: "",
+  coder: "",
+  vision: "",
+  brain: "local"
+};
+const ANTENA = (typeof location !== "undefined" && location.protocol === "http:" && /127\.0\.0\.1|localhost/.test(location.hostname))
+  ? location.origin
+  : "http://127.0.0.1:4250";
+const AREA = {
+  metas: { label: "Metas", color: "#fbbf24" },
+  trabalho: { label: "Carreira", color: "#ff5547" },
+  projetos: { label: "Projetos", color: "#8b7cff" },
+  financas: { label: "Finanças", color: "#f7931a" },
+  aprendizado: { label: "Aprendizado", color: "#2dd4ff" },
+  saude: { label: "Saúde", color: "#10b981" },
+  relacoes: { label: "Relações", color: "#ec4899" },
+  meta: { label: "Você", color: "#8a90a6" }
+};
+const SEED = [
+  { id: "n1", area: "meta", title: "Gustavo", body: "18 anos, estudante de Sistemas de Informação, formado em Desenvolvimento de Sistemas, mora em São Paulo capital." },
+  { id: "n2", area: "trabalho", title: "Especialista IA", body: "Foco em se tornar especialista em IA; ainda sem empresa ou cargo — só no foco por enquanto." },
+  { id: "n3", area: "projetos", title: "Fenix", body: "Agente pessoal de IA e ajudante técnico." },
+  { id: "n4", area: "financas", title: "Renda própria", body: "Objetivo: liberdade financeira via renda própria." },
+  { id: "n5", area: "aprendizado", title: "IA", body: "Estuda e quer aprofundar inteligência artificial." },
+  { id: "n6", area: "aprendizado", title: "Programação", body: "Estuda programação." },
+  { id: "n7", area: "aprendizado", title: "Tecnologia", body: "Quer desenvolver tecnologia." },
+  { id: "n8", area: "saude", title: "Estável", body: "Saúde em dia — treino, sono e alimentação ok." },
+  { id: "n9", area: "relacoes", title: "Carina", body: "Família." },
+  { id: "n10", area: "relacoes", title: "Jeferson", body: "Família." },
+  { id: "n11", area: "relacoes", title: "Mario", body: "Família." },
+  { id: "n12", area: "relacoes", title: "Raquel", body: "Família." },
+  { id: "n13", area: "relacoes", title: "Yasmin", body: "Parceira." }
+];
+const SEED_REL = [
+  ["n1","n2"],["n1","n3"],["n1","n4"],["n1","n5"],["n1","n6"],["n1","n7"],["n1","n8"],
+  ["n1","n9"],["n1","n10"],["n1","n11"],["n1","n12"],["n1","n13"],
+  ["n2","n3"],["n2","n5"],["n2","n6"],["n2","n7"],["n2","n4"],
+  ["n3","n5"],["n3","n6"],["n3","n7"],["n3","n4"],
+  ["n5","n6"],["n6","n7"],["n5","n7"],
+  ["n8","n2"],
+  ["n9","n10"],["n9","n11"],["n9","n12"],["n10","n11"],["n10","n12"],["n11","n12"],
+  ["n13","n9"]
+];
+let NOTES = [];
+let REL = [];
+let history = [];
+const MIND = {
+  thoughts: [],
+  recalled: [],
+  analysis: "",
+  intent: "chat",
+  episodes: [],
+  stack: ["javascript", "html", "css", "node"],
+  code: { lang: "", preview: "", topic: "" },
+  snippets: [],
+  hitEpisodes: []
+};
+window.MIND = MIND;
+let busy = false;
+let armed = false;
+let rec = null;
+let voices = [];
+let edges = [];
+let pulses = [];
+let raf = 0;
+let editId = null;
+
+const $ = id => { try { return document.getElementById(id); } catch (e) { return null; } };
+const fold = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function api(path, opt) {
+  const ac = new AbortController();
+  const ms = (opt && opt.timeout) || 22000;
+  const t = setTimeout(function () { ac.abort(); }, ms);
+  const headers = Object.assign({ "content-type": "application/json" }, (opt && opt.headers) || {});
+  return fetch(ANTENA + path, {
+    method: (opt && opt.method) || "GET",
+    headers: headers,
+    body: opt && opt.body,
+    signal: ac.signal
+  }).then(async function (r) {
+    const ct = r.headers.get("content-type") || "";
+    const data = ct.indexOf("json") >= 0 ? await r.json().catch(function () { return {}; }) : await r.text();
+    if (!r.ok) {
+      const err = new Error((data && data.error) || ("http " + r.status));
+      err.status = r.status;
+      err.body = data;
+      throw err;
+    }
+    return data;
+  }).finally(function () { clearTimeout(t); });
+}
+
+function loadNotes() {
+  try {
+    const raw = localStorage.getItem("jarvis_notes");
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length) {
+      NOTES = parsed;
+      REL = [];
+    } else if (parsed && Array.isArray(parsed.notes) && parsed.notes.length) {
+      NOTES = parsed.notes;
+      REL = Array.isArray(parsed.rel) ? parsed.rel.map(p => p.slice()) : [];
+    } else {
+      NOTES = SEED.map(n => Object.assign({}, n));
+      REL = SEED_REL.map(p => p.slice());
+    }
+  } catch (e) {
+    NOTES = SEED.map(n => Object.assign({}, n));
+    REL = SEED_REL.map(p => p.slice());
+  }
+  SEED.forEach(function (s) {
+    if (!NOTES.some(n => n.id === s.id || fold(n.title) === fold(s.title)))
+      NOTES.push(Object.assign({}, s));
+  });
+  if (!REL.length) REL = SEED_REL.map(p => p.slice());
+  const ids = new Set(NOTES.map(n => n.id));
+  REL = REL.filter(([a, b]) => ids.has(a) && ids.has(b));
+  NOTES.forEach(n => {
+    if (!REL.some(r => r.includes(n.id))) {
+      const hub = NOTES.find(x => x.id === "n1") || NOTES[0];
+      if (hub && hub.id !== n.id) REL.push([hub.id, n.id]);
+    }
+  });
+}
+function persist() {
+  try {
+    localStorage.setItem("jarvis_notes", JSON.stringify({ notes: NOTES, rel: REL }));
+  } catch (e) {
+    try { localStorage.removeItem("jarvis_chat"); localStorage.setItem("jarvis_notes", JSON.stringify({ notes: NOTES, rel: REL })); } catch (e2) {}
+  }
+}
+function esc(s) {
+  return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function loadMind() {
+  try {
+    const raw = JSON.parse(localStorage.getItem("jarvis_mind") || "{}");
+    if (Array.isArray(raw.episodes)) MIND.episodes = raw.episodes.slice(-80);
+    if (Array.isArray(raw.stack) && raw.stack.length) MIND.stack = raw.stack;
+    if (raw.code) MIND.code = Object.assign(MIND.code, raw.code, { preview: "" });
+    if (Array.isArray(raw.snippets)) MIND.snippets = raw.snippets.slice(0, 5);
+  } catch (e) {}
+  try {
+    const h = JSON.parse(localStorage.getItem("jarvis_chat") || "[]");
+    if (Array.isArray(h) && h.length) history = h.slice(-24);
+  } catch (e) {}
+  paintMind();
+}
+function startNewChat() {
+  try { speechSynthesis.cancel(); } catch (e) {}
+  clearInterval(ttsWatch);
+  ttsWatch = 0;
+  ttsQueue = [];
+  ttsIdx = 0;
+  ttsPaused = false;
+  ttsDone = null;
+  busy = false;
+  armed = false;
+  recMuteUntil = 0;
+  history = [];
+  MIND.fileContext = null;
+  MIND.intent = "chat";
+  MIND.thoughts = [];
+  const thread = $("faceThread");
+  if (thread) {
+    thread.dataset.lock = "";
+    thread.innerHTML = '<div class="emptyChat">À sua espera, senhor.</div>';
+  }
+  persistMind();
+  paintMind();
+  setState("idle");
+  setStat("NOVA CONVERSA");
+  const cmd = $("faceCmd");
+  if (cmd) { cmd.value = ""; cmd.focus(); }
+}
+window.startNewChat = startNewChat;
+function persistMind() {
+  const pack = {
+    episodes: (MIND.episodes || []).slice(-80),
+    stack: MIND.stack,
+    code: { lang: MIND.code.lang, topic: MIND.code.topic },
+    snippets: (MIND.snippets || []).slice(0, 5).map(function (s) {
+      return { lang: s.lang, topic: s.topic, t: s.t, code: String(s.code || "").slice(0, 8000) };
+    })
+  };
+  try { localStorage.setItem("jarvis_mind", JSON.stringify(pack)); } catch (e) {}
+  try { localStorage.setItem("jarvis_chat", JSON.stringify((history || []).slice(-24))); } catch (e) {}
+  api("/api/mind", {
+    method: "POST",
+    timeout: 8000,
+    body: JSON.stringify({
+      episodes: pack.episodes,
+      history: (history || []).slice(-24),
+      intent: MIND.intent,
+      analysis: MIND.analysis
+    })
+  }).catch(function () {});
+}
+let paintMindTok = 0;
+function thinkKind(msg) {
+  const m = fold(msg);
+  if (/falha|erro|falhou/.test(m)) return "err";
+  if (/c[oó]digo/.test(m)) return "code";
+  if (/inten/.test(m)) return "intent";
+  if (/mem[oó]ria|guardei|recall/.test(m)) return "mem";
+  if (/c[eé]rebro|ollama|local|an[aá]lise/.test(m)) return "brain";
+  if (/pedido/.test(m)) return "recv";
+  return "ok";
+}
+function thinkTrace(msg, kind) {
+  MIND.thoughts.push({ t: Date.now(), k: kind || thinkKind(msg), m: String(msg || "") });
+  if (MIND.thoughts.length > 14) MIND.thoughts = MIND.thoughts.slice(-14);
+  paintMind();
+}
+function paintMind() {
+  if (paintMindTok) return;
+  paintMindTok = requestAnimationFrame(function () {
+    paintMindTok = 0;
+    paintMindNow();
+  });
+}
+function paintMindNow() {
+  const mem = $("faceVit");
+  const mh = document.querySelector("#faceHud .fhud:nth-child(1) h4");
+  if (mh) mh.innerHTML = "MEMÓRIA<em>" + String(NOTES.length) + "</em>";
+  if (mem) {
+    const stand = typeof coreNotes === "function" ? coreNotes() : [];
+    const extra = (MIND.recalled || []).filter(n => !stand.some(s => s.id === n.id)).slice(0, 3);
+    const items = stand.concat(extra);
+    mem.innerHTML = items.length
+      ? items.map(n => {
+        const area = (AREA[n.area] && AREA[n.area].label) || n.area || "";
+        return '<div class="mchip"><i>' + esc(area) + "</i><b>" + esc(n.title) + "</b>" + esc((n.body || "").slice(0, 110)) + "</div>";
+      }).join("")
+      : '<div class="mchip mute">memória em espera</div>';
+  }
+  const th = $("faceSt");
+  const thh = document.querySelector("#faceHud .fhud:nth-child(2) h4");
+  if (thh) thh.innerHTML = "PENSAMENTO<em>" + String((MIND.thoughts || []).length) + "</em>";
+  if (th) {
+    const rows = (MIND.thoughts || []).map(function (t) {
+      if (typeof t === "string") t = { t: 0, k: thinkKind(t), m: t };
+      const clock = t.t ? new Date(t.t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--";
+      return '<div class="th k-' + esc(t.k || "ok") + '"><span class="tt">' + clock + '</span><i class="tk"></i><span>' + esc(t.m) + "</span></div>";
+    });
+    th.innerHTML = rows.length ? rows.join("") : '<div class="th mute">em silêncio</div>';
+    th.scrollTop = th.scrollHeight;
+  }
+  const an = $("faceLogs");
+  if (an) {
+    const v = MIND.verdict || {};
+    an.innerHTML =
+      '<div class="abit"><b>Importa</b> ' + esc(v.matter || MIND.analysis || "aguardando o primeiro pensamento") + "</div>" +
+      '<div class="abit"><b>Risco</b> ' + esc(v.risk || "—") + "</div>" +
+      '<div class="abit"><b>Próximo</b> ' + esc(v.next || "—") + "</div>";
+  }
+  const hist = $("faceHist");
+  if (hist) {
+    const qf = fold(($("faceFind") && $("faceFind").value) || "");
+    const rows = (MIND.episodes || []).slice().reverse().slice(0, 28).filter(function (e) {
+      if (!qf) return true;
+      return fold((e.q || "") + " " + (e.a || "")).indexOf(qf) >= 0;
+    });
+    hist.innerHTML = rows.length
+      ? rows.map(function (e) {
+        const when = e.t ? new Date(e.t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+        return '<div class="hist" data-q="' + esc(e.q || "") + '"><img src="/fenix-icon.png" alt=""><div><b>Fenix</b><i>' +
+          esc((e.q || "").slice(0, 48)) + "</i></div><span>" + esc(when) + "</span></div>";
+      }).join("")
+      : '<div class="hist mute">sem conversas</div>';
+  }
+  const thread = $("faceThread");
+  if (thread && !thread.dataset.lock) {
+    const msgs = (history || []).slice(-40);
+    thread.innerHTML = (msgs.length
+      ? msgs.map(function (m) {
+        const who = m.role === "user" ? "u" : "a";
+        return '<div class="bub ' + who + '">' + esc(m.content || "") + "</div>";
+      }).join("")
+      : '<div class="emptyChat">À sua espera, senhor.</div>') +
+      (busy ? '<div class="bub a think"><i></i><i></i><i></i></div>' : "");
+    thread.scrollTop = thread.scrollHeight;
+  }
+  const cd = $("faceFeed");
+  const ch = document.querySelector("#faceHud .fhud:nth-child(4) h4");
+  if (cd) {
+    if (MIND.code.preview) {
+      const lines = MIND.code.preview.split(/\n/).length;
+      if (ch) ch.innerHTML = "CÓDIGO<em>" + esc((MIND.code.lang || "txt").toUpperCase()) + " · " + lines + "L</em>";
+      cd.innerHTML = '<div class="clang">' + esc(MIND.code.topic || "último trecho") + "</div><pre>" +
+        esc(MIND.code.preview.split(/\n/).slice(0, 8).join("\n")) + "</pre>" +
+        '<div class="cbar"><button type="button" id="faceOpenCode">ABRIR</button><button type="button" id="faceCopyMini">COPIAR</button></div>';
+    } else {
+      if (ch) ch.innerHTML = "CÓDIGO<em>pilha</em>";
+      cd.innerHTML = '<div class="mute">pilha · ' + esc((MIND.stack || []).join(" · ")) + "</div>";
+    }
+  }
+  const box = $("faceAlerts");
+  if (box) {
+    const als = typeof collectAlerts === "function" ? collectAlerts() : (MIND.alerts || []);
+    box.innerHTML = als.map(a => '<span class="al ' + esc(a.lvl || "dim") + '">' + esc(a.t) + "</span>").join("");
+    box.hidden = !als.length;
+  }
+  const xi = $("cxIntent");
+  if (xi) xi.textContent = MIND.intent || "chat";
+  const xr = $("cxRecall");
+  if (xr) xr.textContent = (MIND.recalled || []).length
+    ? MIND.recalled.map(n => n.title).slice(0, 3).join(" · ")
+    : "em espera";
+  const xe = $("cxEps");
+  if (xe) xe.textContent = String((MIND.episodes || []).length);
+  const xs = $("cxSit");
+  if (xs) xs.textContent = MIND.analysis || (CONFIG.brain === "ollama" ? ("ollama · " + CONFIG.model) : "cérebro local");
+}
+window.paintMind = paintMind;
+window.thinkTrace = thinkTrace;
+
+function setState(s) {
+  const o = $("orb");
+  if (o) o.dataset.state = s;
+  try {
+    (window._orbSetters || []).forEach(function (fn) { fn(s); });
+    const fm = $("faceMode");
+    if (fm) fm.setAttribute("data-s", s);
+    const fs = $("faceStatus");
+    if (fs) fs.textContent = ({ idle: "online", listening: "ouvindo", thinking: "pensando", speaking: "falando", paused: "pausada" })[s] || s;
+  } catch (e) {}
+}
+function setStat(t) { const e = $("stat"); if (e) e.textContent = t; }
+function toggleListening() {
+  if (busy) return;
+  armed = true;
+  setState("listening");
+  startRec();
+  setStat("OUVINDO...");
+}
+window.toggleListening = toggleListening;
+
+function pickVoice() {
+  if (!voices.length) voices = speechSynthesis.getVoices() || [];
+  let best = null, bestS = -1;
+  voices.forEach(v => {
+    const n = (v.name + " " + v.lang).toLowerCase();
+    let s = 0;
+    if (/pt-br|pt_br/.test(n)) s += 14;
+    else if (/pt|portugu/.test(n)) s += 6;
+    if (/natural/.test(n)) s += 32;
+    if (/online|neural|cloud/.test(n)) s += 24;
+    if (/thalita/.test(n)) s += 18;
+    if (/francisca/.test(n)) s += 12;
+    if (/maria/.test(n) && /online|natural|neural/.test(n)) s += 10;
+    if (/female|mulher|femin/.test(n)) s += 4;
+    if (/desktop|mobile|compact|zira|david|mark/.test(n)) s -= 18;
+    if (s > bestS) { bestS = s; best = v; }
+  });
+  return best || voices[0] || null;
+}
+function voiceIsNeural(v) {
+  return !!(v && /natural|online|neural|cloud/i.test(v.name + " " + (v.voiceURI || "")));
+}
+function humanizeTalk(text) {
+  return String(text || "")
+    .replace(/https?:\/\/\S+/g, "um link")
+    .replace(/[—–]/g, ", ")
+    .replace(/\s*;\s*/g, ". ")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\b(sr\.?)\b/gi, "senhor")
+    .replace(/(\d)\s?%/g, "$1 por cento")
+    .replace(/\bIA\b/g, "i á")
+    .replace(/\b(\d{1,2}):(\d{2})\b/g, "$1 horas e $2")
+    .replace(/([,;:])\s*/g, "$1 ")
+    .replace(/([.!?]){2,}/g, "$1")
+    .trim();
+}
+function splitTalk(text) {
+  const bits = text.split(/(?<=[.!?…])\s+/).filter(Boolean);
+  const out = [];
+  let buf = "";
+  bits.forEach(p => {
+    if (!buf) buf = p;
+    else if ((buf + " " + p).length < 110) buf += " " + p;
+    else { out.push(buf); buf = p; }
+  });
+  if (buf) out.push(buf);
+  return out.length ? out : [text];
+}
+function loadVoices() {
+  voices = speechSynthesis.getVoices() || [];
+}
+if (window.speechSynthesis) {
+  loadVoices();
+  speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+function haltRec() {
+  try { if (rec) rec.stop(); } catch (e) {}
+}
+function startRec() {
+  if (!rec || busy) return;
+  try { rec.start(); } catch (e) {}
+}
+
+let ttsWatch = 0;
+let recMuteUntil = 0;
+let ttsPaused = false;
+let ttsHeld = false;
+let ttsQueue = [];
+let ttsIdx = 0;
+let ttsDone = null;
+let ttsVoice = null;
+
+function syncTalkUi() {
+  const paused = ttsPaused;
+  const dash = $("stop");
+  if (dash) {
+    dash.textContent = paused ? "▶" : "❚❚";
+    dash.title = paused ? "Continuar" : "Pausar";
+  }
+  const face = $("faceTalk");
+  if (face) {
+    face.textContent = paused ? "CONTINUAR" : "PAUSAR";
+    face.dataset.mode = paused ? "go" : "stop";
+  }
+}
+
+function finishTalk() {
+  clearInterval(ttsWatch);
+  ttsWatch = 0;
+  ttsQueue = [];
+  ttsIdx = 0;
+  ttsPaused = false;
+  busy = false;
+  recMuteUntil = Date.now() + 450;
+  setState("listening");
+  setTimeout(startRec, 420);
+  syncTalkUi();
+  const d = ttsDone;
+  ttsDone = null;
+  if (d) d();
+}
+
+function speakChunk() {
+  if (ttsPaused) return;
+  if (ttsIdx >= ttsQueue.length) { finishTalk(); return; }
+  const chunk = ttsQueue[ttsIdx++];
+  const u = new SpeechSynthesisUtterance(chunk);
+  u.lang = "pt-BR";
+  if (ttsVoice) u.voice = ttsVoice;
+  const neural = voiceIsNeural(ttsVoice);
+  u.rate = neural ? 0.9 : 0.84;
+  u.pitch = neural ? 0.96 : 0.92;
+  u.volume = 1;
+  recMuteUntil = Date.now() + Math.max(5000, chunk.length * 90);
+  u.onend = () => { if (!ttsPaused) setTimeout(speakChunk, neural ? 90 : 140); };
+  u.onerror = () => { if (!ttsPaused) setTimeout(speakChunk, 60); };
+  try { speechSynthesis.speak(u); } catch (e) { finishTalk(); }
+}
+
+function speak(text, done) {
+  if (!text) { if (done) done(); return; }
+  ttsPaused = false;
+  busy = true;
+  recMuteUntil = Date.now() + 8000;
+  setState("speaking");
+  haltRec();
+  try { speechSynthesis.cancel(); } catch (e) {}
+  ttsDone = done;
+  ttsVoice = pickVoice();
+  ttsQueue = splitTalk(humanizeTalk(text));
+  ttsIdx = 0;
+  speakChunk();
+  syncTalkUi();
+  clearInterval(ttsWatch);
+  const until = Date.now() + Math.min(120000, 8000 + ttsQueue.join(" ").length * 90);
+  ttsWatch = setInterval(function () {
+    if (Date.now() > until || (!speechSynthesis.speaking && !speechSynthesis.pending && ttsIdx >= ttsQueue.length))
+      finishTalk();
+  }, 700);
+}
+
+function pauseTalk() {
+  if (!speechSynthesis.speaking && !speechSynthesis.pending && !ttsQueue.length) return;
+  ttsHeld = speechSynthesis.speaking;
+  ttsPaused = true;
+  try { speechSynthesis.pause(); } catch (e) {}
+  setState("paused");
+  setStat("PAUSADA");
+  syncTalkUi();
+}
+
+function resumeTalk() {
+  if (!ttsPaused && !speechSynthesis.paused) return;
+  ttsPaused = false;
+  setState("speaking");
+  setStat("FALANDO");
+  try { speechSynthesis.resume(); } catch (e) {}
+  setTimeout(() => {
+    if (ttsPaused) return;
+    if (!speechSynthesis.speaking && !speechSynthesis.pending) {
+      if (ttsHeld) ttsIdx = Math.max(0, ttsIdx - 1);
+      ttsHeld = false;
+      speakChunk();
+    }
+  }, 180);
+  syncTalkUi();
+}
+
+function toggleTalk() {
+  if (ttsPaused || speechSynthesis.paused) resumeTalk();
+  else if (speechSynthesis.speaking || speechSynthesis.pending || ttsQueue.length) pauseTalk();
+}
+window.toggleTalk = toggleTalk;
+
+function stopTalk() {
+  toggleTalk();
+}
+
+function setupRec() {
+  const Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Ctor) { setStat("Reconhecimento de voz indisponível — use o teclado"); return; }
+  rec = new Ctor();
+  rec.lang = "pt-BR";
+  rec.continuous = true;
+  rec.interimResults = false;
+  rec.onresult = ev => {
+    if (busy) return;
+    const t = ev.results[ev.results.length - 1][0].transcript;
+    heard(t);
+  };
+  rec.onend = () => { if (!busy) setTimeout(startRec, 220); };
+  rec.onerror = ev => {
+    if (ev.error === "aborted" || ev.error === "no-speech") return;
+    if (ev.error === "not-allowed") {
+      setStat("Microfone bloqueado. Permita o acesso no navegador.");
+      speak("O microfone foi bloqueado, senhor. Permita o acesso e tente de novo.");
+    }
+  };
+}
+
+function heard(raw) {
+  if (busy || Date.now() < recMuteUntil) return;
+  const t = String(raw || "").trim();
+  if (!t) return;
+  const f = fold(t);
+  const ww = CONFIG.wakeWord;
+  if (armed) {
+    armed = false;
+    runCommand(t);
+    return;
+  }
+  const i = f.indexOf(ww);
+  if (i < 0) return;
+  const after = t.slice(i + ww.length).replace(/^[,.\s:;!?-]+/, "").trim();
+  if (after) runCommand(after);
+  else {
+    armed = true;
+    setStat("À sua espera, senhor...");
+    setState("listening");
+  }
+}
+
+function detectIntent(text) {
+  const q = fold(text);
+  if (/anota|anote|guarda|guarde|lembra que|lembre|salva|salve que/.test(q)) return "remember";
+  if (/digest|briefing|resumo do dia|bom dia/.test(q) && /digest|briefing|resumo|manha|hoje/.test(q)) return "digest";
+  if (/agenda|compromisso|reuni[ao]|que horas (tenho|e o)|proximo compromisso/.test(q)) return "agenda";
+  if (/e-?mails?|caixa de entrada|inbox|correio/.test(q)) return "mail";
+  if (/not[ií]cias?|manchete|radar de/.test(q)) return "news";
+  if (/analisa|analise|leia|le o|abre o/.test(q) && /arquivo|file|imagem|foto|print|screenshot|\.(png|jpe?g|webp|gif|pdf|txt|md|json|csv)/.test(q)) return "analyze";
+  if (/cofre|arquivos|pasta|diretorio/.test(q)) return "vault";
+  if (/codigo|código|funcao|função|javascript|python|html|css|node|bug|erro de|refator|regex|algoritm|script|componente|api |sql\b|typescript/.test(q)) return "code";
+  if (/quem sou|sobre mim|me conhece|quem eu sou/.test(q)) return "who";
+  return "chat";
+}
+function formVerdict(ask, reply) {
+  const rec = (MIND.recalled || [])[0];
+  const q = fold(ask || "");
+  let risk = "perder o fio da conversa";
+  let next = "o senhor confirma e eu sigo";
+  if (MIND.intent === "code") { risk = "aplicar trecho sem revisar"; next = "abrir o painel e testar"; }
+  else if (MIND.intent === "analyze") { risk = "decidir com pouco contexto"; next = "escolher um caminho e anotar"; }
+  else if (MIND.intent === "remember") { risk = "guardar título vago"; next = "completar a nota depois"; }
+  else if (MIND.intent === "vault") { risk = "arquivo fora do cofre"; next = "soltar o arquivo no painel"; }
+  else if (/estud|prova|prazo|hoje|amanha/.test(q)) { risk = "prazo passar sem ação"; next = "marcar na agenda se quiser"; }
+  MIND.verdict = {
+    matter: rec ? rec.title + " — " + String(rec.body || "").slice(0, 72) : String(ask || "pedido").slice(0, 80),
+    risk: risk,
+    next: next,
+    line: String(reply || "").slice(0, 180)
+  };
+  MIND.analysis = MIND.verdict.matter + " · risco: " + risk + " · próximo: " + next;
+  thinkTrace("veredicto · " + risk, "brain");
+}
+const ALIAS = {
+  yasmin: ["parceira", "namorada", "namoro"],
+  gustavo: ["eu", "mim", "nome"],
+  fenix: ["voce", "assistente", "projeto"],
+  carina: ["mae", "familia"],
+  jeferson: ["pai", "familia"],
+  mario: ["familia"],
+  raquel: ["familia"],
+  ia: ["inteligencia", "artificial"]
+};
+function expandToks(text) {
+  const qt = toks(text);
+  const extra = [];
+  const q = fold(text);
+  Object.keys(ALIAS).forEach(function (k) {
+    if (q.indexOf(k) >= 0 || ALIAS[k].some(a => q.indexOf(a) >= 0)) {
+      extra.push(k);
+      ALIAS[k].forEach(function (a) { extra.push(a); });
+    }
+  });
+  NOTES.forEach(function (n) {
+    if (fold(n.title) && q.indexOf(fold(n.title)) >= 0) extra.push(fold(n.title));
+  });
+  return Array.from(new Set(qt.concat(extra)));
+}
+function coreNotes() {
+  return ["n1", "n13", "n3"].map(id => NOTES.find(n => n.id === id)).filter(Boolean);
+}
+function retrieveMemory(text) {
+  const qt = expandToks(text);
+  const q = fold(text);
+  const scored = NOTES.map(n => {
+    const title = fold(n.title);
+    const hay = fold(n.title + " " + n.body + " " + ((AREA[n.area] && AREA[n.area].label) || ""));
+    let s = 0;
+    if (n.area === "meta") s += 0.4;
+    if (n.updated) s += Math.max(0, 1 - (Date.now() - n.updated) / 86400000 / 21);
+    if (n.hits) s += Math.min(1.2, n.hits * 0.15);
+    qt.forEach(t => {
+      if (!t) return;
+      if (title === t || title.indexOf(t) >= 0 || t.indexOf(title) >= 0) s += 5;
+      else if (hay.indexOf(t) >= 0) s += t.length > 4 ? 2.4 : 1.2;
+    });
+    return { n: n, s: s };
+  }).filter(x => x.s > 0.5).sort((a, b) => b.s - a.s);
+  let recalled = scored.slice(0, 5).map(x => x.n);
+  const ids = new Set(recalled.map(n => n.id));
+  const needCore = MIND.intent === "who" || MIND.intent === "remember" || !recalled.length;
+  if (needCore) {
+    coreNotes().forEach(function (n) {
+      if (!ids.has(n.id)) { recalled.unshift(n); ids.add(n.id); }
+    });
+  } else {
+    const me = NOTES.find(n => n.id === "n1");
+    if (me && !ids.has("n1") && recalled.length < 6) { recalled.push(me); ids.add("n1"); }
+  }
+  REL.forEach(function (pair) {
+    const a = pair[0], b = pair[1];
+    if (ids.has(a) && !ids.has(b)) {
+      const n = NOTES.find(x => x.id === b);
+      if (n && recalled.length < 7) { recalled.push(n); ids.add(n.id); }
+    } else if (ids.has(b) && !ids.has(a)) {
+      const n = NOTES.find(x => x.id === a);
+      if (n && recalled.length < 7) { recalled.push(n); ids.add(n.id); }
+    }
+  });
+  recalled = recalled.slice(0, 6);
+  scored.slice(0, 4).forEach(function (x) { x.n.hits = (x.n.hits || 0) + 1; });
+  MIND.recalled = recalled;
+  const episodes = (MIND.episodes || []).map(function (e) {
+    const hay = fold((e.q || "") + " " + (e.a || ""));
+    let s = e.t ? Math.max(0, 1 - (Date.now() - e.t) / 86400000 / 10) : 0;
+    qt.forEach(function (t) { if (t.length > 2 && hay.indexOf(t) >= 0) s += 2; });
+    return { e: e, s: s };
+  }).filter(x => x.s > 0.4).sort((a, b) => b.s - a.s).slice(0, 4).map(x => x.e);
+  MIND.hitEpisodes = episodes.length ? episodes : (MIND.episodes || []).slice(-2);
+  return { notes: recalled, episodes: MIND.hitEpisodes };
+}
+function collectAlerts() {
+  const out = [];
+  try {
+    const n = typeof nextEvent === "function" ? nextEvent() : null;
+    if (n && n.start && n.start > Date.now() && n.start - Date.now() < 2 * 60 * 60 * 1000)
+      out.push({ lvl: "warn", t: "compromisso em breve: " + n.title });
+  } catch (e) {}
+  try {
+    const ac = MAILS.filter(m => m.balde === "acao").length;
+    if (ac) out.push({ lvl: "warn", t: ac + " e-mail(s) pedem ação" });
+  } catch (e) {}
+  if (CONFIG.brain !== "ollama")
+    out.push({ lvl: "dim", t: "Ollama offline · cérebro local" });
+  const fresh = NOTES.some(n => n.updated && Date.now() - n.updated < 14 * 86400000);
+  if (!fresh) out.push({ lvl: "dim", t: "memória sem fato novo — diga anota que" });
+  MIND.alerts = out;
+  return out;
+}
+function situationBrief() {
+  const bits = [];
+  try {
+    const n = typeof nextEvent === "function" ? nextEvent() : null;
+    if (n) bits.push("próximo: " + n.title);
+  } catch (e) {}
+  try {
+    const ac = MAILS.filter(m => m.balde === "acao").length;
+    if (ac) bits.push(ac + " e-mails de ação");
+  } catch (e) {}
+  bits.push(CONFIG.brain === "ollama" ? CONFIG.model : "cérebro local");
+  bits.push("modo " + (MIND.intent || "chat"));
+  return bits.join(" · ");
+}
+function autoLearn(text) {
+  const q = fold(text);
+  if (/anota|anote|guarda|lembra que|salve/.test(q)) return;
+  if (text.length < 14 || text.length > 200) return;
+  if (!/\b(eu sou|eu estou|eu quero|estou estudando|estou fazendo|estou criando|meu projeto|minha meta|trabalho com|estudo )\b/.test(q)) return;
+  let area = "meta";
+  if (/estud|aprend|curso/.test(q)) area = "aprendizado";
+  else if (/projeto|app|sistema|fenix/.test(q)) area = "projetos";
+  else if (/trabalh|vaga|carreira/.test(q)) area = "trabalho";
+  else if (/dinheiro|renda|financ/.test(q)) area = "financas";
+  const title = text.split(/\s+/).slice(0, 3).join(" ");
+  applySave(area, title, text);
+  thinkTrace("guardei · " + title);
+}
+function peelCode(raw) {
+  const blocks = [];
+  let lang = "";
+  const spoken = String(raw || "").replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, l, c) => {
+    if (l) lang = l;
+    blocks.push(String(c || "").trim());
+    return " ";
+  });
+  return {
+    spoken: spoken.replace(/[#*_`]/g, "").replace(/\s+/g, " ").trim(),
+    code: blocks.join("\n\n"),
+    lang: lang
+  };
+}
+
+function talkModel() {
+  if (MIND.intent === "code") return CONFIG.coder || CONFIG.chat || CONFIG.model;
+  return CONFIG.chat || CONFIG.model;
+}
+function systemPrompt() {
+  const you = NOTES.find(n => n.id === "n1") || notesOf("meta")[0];
+  const rec = (MIND.recalled || []).slice(0, 3);
+  if (MIND.fileContext) {
+    const f = MIND.fileContext;
+    return CONFIG.name + " leu o arquivo do Gustavo. Português do Brasil, 4 a 6 frases faláveis. Sem markdown. Não invente o que não está no arquivo.\n" +
+      "Arquivo: " + f.name + " · " + f.kind + " · " + f.size + " bytes\n" +
+      String(f.text || "(sem texto extraível)").slice(0, 8000);
+  }
+  let mode = "Responda em português do Brasil, PARA SER FALADO: 2 a 5 frases. Sem emojis, sem markdown, sem listas. Se não souber, admita.\n";
+  if (MIND.intent === "code")
+    mode = "Modo código. Fora de blocos: 2 a 4 frases faláveis. Código só em ```lingua.\nPilha: " + (MIND.stack || []).join(", ") + ".\n";
+  else if (MIND.intent === "who")
+    mode = "Diga quem o senhor é com o que está na memória, 3 frases, sem inventar.\n";
+  const eps = (MIND.hitEpisodes || []).slice(0, 2).map(e => "G: " + e.q + " / F: " + e.a).join("\n");
+  return CONFIG.name + " é a IA pessoal do Gustavo. Trate-o de \"" + CONFIG.address + "\". Mordomo formal.\n" +
+    mode +
+    "IDENTIDADE: " + (you ? you.body : "Gustavo, 18, SI em São Paulo.") + "\n" +
+    (rec.length ? ("MEMÓRIA:\n" + rec.map(n => "- " + n.title + ": " + n.body).join("\n") + "\n") : "") +
+    (eps ? "RECENTE:\n" + eps + "\n" : "") +
+    "Não invente pessoas, datas ou números. Se faltar um fato, peça um.";
+}
+
+function applySave(area, title, body) {
+  title = String(title || "").trim();
+  body = String(body || "").trim();
+  if (!AREA[area] || !title) return null;
+  let note = NOTES.find(n => fold(n.title) === fold(title));
+  if (note) {
+    note.area = area;
+    note.title = title;
+    note.body = body;
+    note.updated = Date.now();
+    note.hits = (note.hits || 0) + 1;
+  } else {
+    note = { id: "n" + Date.now(), area: area, title: title, body: body, updated: Date.now(), hits: 1 };
+    NOTES.push(note);
+    const hub = NOTES.find(x => x.id === "n1") || NOTES[0];
+    if (hub && hub.id !== note.id) REL.push([hub.id, note.id]);
+    const sib = NOTES.find(x => x.area === area && x.id !== note.id);
+    if (sib) REL.push([sib.id, note.id]);
+  }
+  persist();
+  if (!$("faceMode") || !$("faceMode").classList.contains("on")) renderGraph();
+  const id = note.id;
+  requestAnimationFrame(() => flashNode(id));
+  return note;
+}
+
+function stripSaves(text) {
+  const re = /\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]/g;
+  let m;
+  while ((m = re.exec(text))) applySave(m[1], m[2], m[3]);
+  return text.replace(/\s*\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]\s*/g, " ").trim();
+}
+
+const STOP = { que:1, para:1, com:1, uma:1, uns:1, por:1, dos:1, das:1, nos:1, nas:1, isso:1, esse:1, essa:1, este:1, esta:1, como:1, mais:1, menos:1, muito:1, minha:1, meu:1, seus:1, seu:1, the:1, and:1, sobre:1, fala:1, fale:1, diga:1, me:1, te:1 };
+function toks(s) {
+  return fold(s).split(/[^a-z0-9]+/).filter(w => w.length > 2 && !STOP[w]);
+}
+function notesOf(area) { return NOTES.filter(n => n.area === area); }
+function joinNotes(list) {
+  return list.map(n => n.title + ": " + n.body).join(" ");
+}
+function inferSave(text) {
+  const f = fold(text);
+  const m = text.match(/(?:anota|anote|guarda|guarde|lembra(?: que)?|lembre|salva|salve)\s+(?:que\s+)?(.+)/i);
+  if (!m) return null;
+  const body = m[1].trim().replace(/[.!?]+$/, "");
+  if (!body) return null;
+  let area = "meta";
+  if (/estud|aprend|curso|livr|aula/.test(f)) area = "aprendizado";
+  else if (/projeto|constru|app|sistema/.test(f)) area = "projetos";
+  else if (/trabalh|vaga|emprego|carreira|empresa/.test(f)) area = "trabalho";
+  else if (/treino|saude|sono|dieta|academia/.test(f)) area = "saude";
+  else if (/dinheiro|renda|financ|economia/.test(f)) area = "financas";
+  else if (/meta|objetivo|quero/.test(f)) area = "metas";
+  else if (/familia|namor|amigo|parceir|esposa|mae|pai/.test(f)) area = "relacoes";
+  const title = body.split(/\s+/).slice(0, 2).join(" ");
+  return { area: area, title: title, body: body };
+}
+function hubLine(text) {
+  const q = fold(text);
+  const sir = CONFIG.address;
+  if (MIND.intent === "agenda") {
+    if (/pr[oó]ximo/.test(q)) {
+      const n = nextEvent();
+      return n
+        ? ("Próximo compromisso: " + n.title + ", " + fmtHour(n) + ", " + leftTime(n.start) + ", " + sir + ".")
+        : ("Nenhum compromisso à frente na janela, " + sir + ".");
+    }
+    if (/semana/.test(q))
+      return EVENTS.length
+        ? ("Nos próximos dias: " + EVENTS.slice(0, 12).map(e => dayLabel(e.start) + " " + fmtHour(e) + " " + e.title).join(". ") + ".")
+        : ("Nada na agenda da semana, " + sir + ".");
+    const evs = todayEvents();
+    return evs.length
+      ? ("Hoje, " + sir + ": " + evs.map(e => fmtHour(e) + ", " + e.title).join(". ") + ".")
+      : ("Agenda livre hoje, " + sir + ".");
+  }
+  if (MIND.intent === "mail") {
+    const ac = MAILS.filter(m => m.balde === "acao");
+    if (!MAILS.length) return "Ainda não li a caixa, " + sir + ". Confira a senha de app em ⚙.";
+    return ac.length
+      ? (ac.length + " pedem ação: " + ac.slice(0, 4).map(m => m.resumo || m.assunto).join("; ") + ".")
+      : ("Nenhum e-mail pedindo ação, " + sir + ". A caixa está calma.");
+  }
+  const titles = HUB.topics.map(t => (NEWS[t] || []).slice(0, 2).map(n => n.title).join("; ")).filter(Boolean);
+  return titles.length
+    ? ("No radar: " + titles.join(". ") + ".")
+    : ("Sem manchetes no radar ainda, " + sir + ".");
+}
+function localThink(text) {
+  const q = fold(text);
+  const sir = CONFIG.address;
+  const saved = inferSave(text);
+  if (saved) applySave(saved.area, saved.title, saved.body);
+  if (/^(oi|ola|bom dia|boa tarde|boa noite|eai|e ai|hey)\b/.test(q)) {
+    const w = (MIND.alerts || collectAlerts()).filter(a => a.lvl === "warn")[0];
+    return w
+      ? ("Sistemas operacionais, " + sir + ". Aviso: " + w.t + ".")
+      : ("Sistemas operacionais, " + sir + ". Estou à disposição.");
+  }
+  if (/quem e voce|seu nome|o que voce e/.test(q))
+    return "Sou o " + CONFIG.name + ", assistente pessoal do " + sir + ". Personalidade de mordomo. Memória no Second Brain.";
+  if (/quem sou|meu nome|sobre mim|me conhece|quem eu sou/.test(q)) {
+    const you = notesOf("meta")[0];
+    const her = NOTES.find(n => fold(n.title) === "yasmin");
+    const fam = notesOf("relacoes").filter(n => fold(n.title) !== "yasmin").map(n => n.title);
+    if (!you) return "Ainda tenho pouco sobre o senhor no Second Brain.";
+    return "O senhor é " + you.body +
+      (her ? " A parceira do senhor é a " + her.title + "." : "") +
+      (fam.length ? " Família: " + fam.join(", ") + "." : "") +
+      " Posso detalhar qualquer área.";
+  }
+  if (MIND.intent === "code" || /codigo|javascript|python|html|css|node|bug|funcao|typescript/.test(q)) {
+    return "Consigo raciocinar o problema com o senhor. Descreva o trecho ou o erro. Com o Ollama ligado eu escrevo a solução no painel.";
+  }
+  if (/carreira|trabalho|especialista|emprego|cargo/.test(q)) {
+    const xs = notesOf("trabalho");
+    return xs.length
+      ? ("Na carreira, " + sir + ": " + joinNotes(xs) + " Sigo esse rumo com o senhor.")
+      : ("Não há nota de carreira ainda, " + sir + ".");
+  }
+  if (/projeto|fenix|o que (estou|to) (fazendo|trabalhando)/.test(q)) {
+    const xs = notesOf("projetos");
+    return xs.length
+      ? ("Projetos em curso, " + sir + ". " + joinNotes(xs))
+      : ("Nenhum projeto anotado, " + sir + ".");
+  }
+  if (/financ|dinheiro|renda|liberdade/.test(q)) {
+    const xs = notesOf("financas");
+    return xs.length
+      ? ("Nas finanças: " + joinNotes(xs) + " Mantenho isso em vista, " + sir + ".")
+      : ("Sem objetivo financeiro registrado, " + sir + ".");
+  }
+  if (/estud|aprend|leia|leitura|programac|tecnolog/.test(q)) {
+    const xs = notesOf("aprendizado");
+    return xs.length
+      ? ("No aprendizado, " + sir + ": " + joinNotes(xs))
+      : ("Nada estudado anotado ainda, " + sir + ".");
+  }
+  if (/saude|treino|sono|aliment|academia/.test(q)) {
+    const xs = notesOf("saude");
+    return xs.length
+      ? ("Saúde: " + joinNotes(xs) + " Bom sinal, " + sir + ".")
+      : ("Sem notas de saúde, " + sir + ".");
+  }
+  if (/familia|relac|namor|parceir|amigo|yasmin|carina|jeferson|mario|raquel/.test(q)) {
+    const xs = notesOf("relacoes");
+    return xs.length
+      ? ("Relações registradas, " + sir + ": " + xs.map(n => n.title + " (" + n.body + ")").join(", ") + ".")
+      : ("Nenhuma relação anotada, " + sir + ".");
+  }
+  if (/hora|que horas|data|dia (e|é)/.test(q)) {
+    const d = new Date();
+    return "São " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) +
+      " de " + d.toLocaleDateString("pt-BR") + ", " + sir + ".";
+  }
+  if (saved)
+    return "Anotado no Second Brain, " + sir + ". Título: " + saved.title + ".";
+  const qt = toks(text);
+  const ranked = NOTES.map(n => {
+    const hay = fold(n.title + " " + n.body + " " + ((AREA[n.area] && AREA[n.area].label) || ""));
+    let s = 0;
+    qt.forEach(t => { if (hay.indexOf(t) >= 0) s += t.length > 4 ? 2 : 1; });
+    return { n: n, s: s };
+  }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  if (MIND.intent === "vault" || /cofre|arquivos|pasta/.test(q)) {
+    try { if (typeof window.openVault === "function") window.openVault(); } catch (e) {}
+    return "Abri o cofre, " + sir + ". Pode soltar arquivos, criar pastas ou abrir o que já está lá.";
+  }
+  if (MIND.fileContext) {
+    const f = MIND.fileContext;
+    const sample = String(f.text || "").replace(/\s+/g, " ").slice(0, 280);
+    if (f.kind === "image")
+      return f.text
+        ? f.text
+        : ("Vi " + f.name + ", " + sir + ", mas o modelo de visão não respondeu. Confira se o Ollama está aberto — ollama pull moondream.");
+    if (f.kind === "bin" && !sample)
+      return "Guardei " + f.name + ", mas é binário e não extraí texto. Converta para txt, md ou pdf com texto, " + sir + ".";
+    return "Li " + f.name + ", " + sir + ". " + (sample ? ("Trecho: " + sample + ".") : "Há pouco texto.") + " O risco é decidir sem o senhor confirmar o objetivo. Diga se quer resumo, risco ou próximo passo.";
+  }
+  if (MIND.intent === "analyze" || /analisa|o que acha/.test(q)) {
+    const hit = ranked[0] && ranked[0].n;
+    if (hit)
+      return "O que importa agora é " + hit.body + " O risco é decidir sem cruzar o resto da memória. O próximo passo é o senhor escolher um rumo e eu anoto. Se faltar um fato, me diga só esse.";
+    return "Ainda tenho pouco contexto para um parecer firme, " + sir + ". Conte o caso em uma frase que eu monto o risco e o próximo passo.";
+  }
+  if (ranked.length) {
+    const top = ranked.slice(0, 2).map(x => x.n);
+    return "Lembro disto, " + sir + ". " + top.map(n => n.body).join(" ") + " Quer que eu aprofunde?";
+  }
+  const ep = (MIND.hitEpisodes || [])[0];
+  if (ep && ep.a)
+    return "Não está nas notas, " + sir + ", mas falamos disso: " + ep.a + " Quer que eu anote?";
+  return "Não tenho isso na memória ainda, " + sir + ". Conte e diga anota que, que eu guardo.";
+}
+
+async function probeOllama() {
+  try {
+    const r = await fetch("http://127.0.0.1:11434/api/tags");
+    if (!r.ok) throw new Error("tags");
+    const d = await r.json();
+    const names = (d.models || []).map(m => m.name);
+    if (!names.length) throw new Error("empty");
+    CONFIG.vision = names.find(n => /llava|llama3\.2-vision|qwen2\.5-vl|qwen2-vl|bakllava|moondream|minicpm-v|gemma3/i.test(n)) || "";
+    CONFIG.coder = names.find(n => /coder|codellama|deepseek-coder/i.test(n)) || "";
+    const chatPrefer = ["llama3.2", "llama3.1", "llama3", "qwen2.5", "qwen2", "mistral", "phi3", "gemma2", "gemma"];
+    CONFIG.chat = chatPrefer.map(p => names.find(n => n.indexOf(p) === 0 && n.indexOf("vision") < 0 && n.indexOf("coder") < 0)).find(Boolean)
+      || names.find(n => n.indexOf("vision") < 0 && n.indexOf("coder") < 0)
+      || names[0];
+    CONFIG.model = CONFIG.chat;
+    CONFIG.brain = "ollama";
+    if (CONFIG.vision) {
+      fetch("http://127.0.0.1:11434/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: CONFIG.vision, prompt: "ok", stream: false, keep_alive: "30m" })
+      }).catch(function () {});
+    }
+    return true;
+  } catch (e) {}
+  try {
+    const r = await fetch(ANTENA + "/api/health");
+    if (!r.ok) return false;
+    const d = await r.json();
+    if (!(d.ollama && d.ollama.ok)) return false;
+    CONFIG.chat = d.ollama.chat || d.ollama.model || CONFIG.chat;
+    CONFIG.coder = d.ollama.coder || CONFIG.coder || "";
+    CONFIG.model = CONFIG.chat;
+    CONFIG.vision = d.ollama.vision || CONFIG.vision || "";
+    CONFIG.brain = "ollama";
+    return true;
+  } catch (e) { return false; }
+}
+
+function setBrainBadge() {
+  $("brainMode").textContent = CONFIG.brain === "ollama"
+    ? ("CÉREBRO · " + (CONFIG.chat || CONFIG.model) + (CONFIG.coder ? " · código " + CONFIG.coder : "") + (CONFIG.vision ? " · visão " + CONFIG.vision : ""))
+    : "CÉREBRO · LOCAL · SEM API";
+}
+
+function trimHistory() {
+  if (history.length > 20) history = history.slice(-20);
+}
+async function imageToB64(rel) {
+  if (MIND.fileContext && MIND.fileContext.b64) return MIND.fileContext.b64;
+  const r = await fetch(ANTENA + "/api/vault/file?path=" + encodeURIComponent(rel));
+  if (!r.ok) throw new Error("img");
+  const mime = (r.headers.get("content-type") || "image/jpeg").split(";")[0];
+  const buf = await r.arrayBuffer();
+  const blob = new Blob([buf], { type: mime });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await new Promise(function (ok, no) {
+      const el = new Image();
+      el.onload = function () { ok(el); };
+      el.onerror = function () { no(new Error("decode")); };
+      el.src = url;
+    });
+    const max = 1024;
+    let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    if (w > max || h > max) {
+      const s = max / Math.max(w, h);
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+    }
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, w);
+    c.height = Math.max(1, h);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.72).replace(/^data:image\/jpeg;base64,/, "");
+  } catch (e) {
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+async function askBrainAntena() {
+  const img = !!(MIND.fileContext && MIND.fileContext.kind === "image");
+  let images = [];
+  if (img) {
+    try { images = [await imageToB64(MIND.fileContext.path)]; } catch (e) {}
+  }
+  const last = (history[history.length - 1] && history[history.length - 1].content) || "";
+  const msgs = img
+    ? []
+    : [{ role: "system", content: systemPrompt() }].concat(MIND.fileContext ? history.slice(-1) : history.slice(-8));
+  const r = await fetch(ANTENA + "/api/brain", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      intent: img ? "vision" : MIND.intent,
+      model: img ? CONFIG.vision : talkModel(),
+      prompt: last,
+      messages: msgs,
+      images: images
+    })
+  });
+  if (!r.ok) throw new Error("antena-brain");
+  const d = await r.json();
+  if (d.text && img && MIND.fileContext) MIND.fileContext.text = String(d.text).slice(0, 900);
+  return d.text || "";
+}
+async function askOllama() {
+  trimHistory();
+  const code = MIND.intent === "code";
+  const img = !!(MIND.fileContext && MIND.fileContext.kind === "image" && MIND.fileContext.path);
+  const file = !!(MIND.fileContext && MIND.fileContext.text);
+  const ac = new AbortController();
+  const t = setTimeout(function () { ac.abort(); }, img ? 90000 : (code ? 22000 : (file ? 20000 : 14000)));
+  try {
+    if (img) {
+      if (!CONFIG.vision) await probeOllama();
+      if (!CONFIG.vision) throw new Error("no-vision");
+      thinkTrace("visão · " + CONFIG.vision, "brain");
+      const b64 = await imageToB64(MIND.fileContext.path);
+      const ask = (history[history.length - 1] && history[history.length - 1].content) || "descreva e analise a imagem";
+      const prompt = ask + ". Em português do Brasil, 4 a 6 frases. O que aparece, o que importa, risco, próximo passo.";
+      const moon = /moondream/i.test(CONFIG.vision);
+      let out = "";
+      if (!moon) {
+        try {
+          const res = await fetch("http://127.0.0.1:11434/api/chat", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            signal: ac.signal,
+            body: JSON.stringify({
+              model: CONFIG.vision,
+              stream: false,
+              options: { temperature: 0.3, top_p: 0.9, num_predict: 220 },
+              messages: [{ role: "user", content: prompt, images: [b64] }]
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            out = (data.message && data.message.content) || "";
+          }
+        } catch (e) {}
+      }
+      if (!out) {
+        const ac2 = new AbortController();
+        const t2 = setTimeout(function () { ac2.abort(); }, 90000);
+        try {
+          const res = await fetch("http://127.0.0.1:11434/api/generate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            signal: ac2.signal,
+            body: JSON.stringify({ model: CONFIG.vision, prompt: prompt, images: [b64], stream: false, keep_alive: "30m" })
+          });
+          if (!res.ok) throw new Error("http");
+          const data = await res.json();
+          out = data.response || "";
+        } finally {
+          clearTimeout(t2);
+        }
+      }
+      if (out) MIND.fileContext.text = out.slice(0, 900);
+      if (!out) throw new Error("empty");
+      return out;
+    }
+    const msgs = MIND.fileContext
+      ? [{ role: "system", content: systemPrompt() }].concat(history.slice(-1))
+      : [{ role: "system", content: systemPrompt() }].concat(history.slice(-8));
+    const res = await fetch("http://127.0.0.1:11434/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal: ac.signal,
+      body: JSON.stringify({
+        model: talkModel(),
+        stream: false,
+        options: { temperature: code ? 0.28 : 0.4, top_p: 0.9, num_predict: code ? 480 : (file ? 280 : 180) },
+        messages: msgs
+      })
+    });
+    if (!res.ok) throw new Error("http");
+    const data = await res.json();
+    const text = (data.message && data.message.content) || "";
+    if (!text) throw new Error("empty");
+    return text;
+  } catch (e) {
+    thinkTrace("antena · cérebro", "brain");
+    return await askBrainAntena();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function loadVaultFile(rel) {
+  try {
+    const r = await fetch(ANTENA + "/api/vault/read?path=" + encodeURIComponent(rel));
+    if (!r.ok) return null;
+    const d = await r.json();
+    d.path = rel;
+    return d;
+  } catch (e) { return null; }
+}
+async function attachFileFromText(text) {
+  if (MIND.fileContext && MIND.fileContext.hold) return;
+  const raw = String(text || "");
+  const f = fold(raw);
+  const wantsImg = /imagem|foto|print|screenshot|\.png|\.jpe?g|\.webp|\.gif/.test(f);
+  const named = raw.match(/[\w.\-]+\.(png|jpe?g|webp|gif|pdf|txt|md|json|js|html|css|py|csv)/i);
+  const m = raw.match(/(?:arquivo|file|imagem|foto)\s+["']?([^"'?\n]{2,80})/i);
+  let q = named ? named[0] : (m ? m[1].trim().replace(/[.!]+$/, "") : "");
+  if (/^(a|o|essa|esse|este|isto|aqui|agora|do|da|um|uma|de)$/i.test(q)) q = "";
+  if (!q && MIND.fileContext && (MIND.fileContext.kind === "image" || MIND.fileContext.text)) return;
+  if (!q && !wantsImg && !/arquivo|file/.test(f)) return;
+  try {
+    const url = ANTENA + "/api/vault/find?q=" + encodeURIComponent(q) + (wantsImg && !q ? "&kind=image" : "");
+    const r = await fetch(url);
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.path) { thinkTrace("arquivo não achado · " + (q || "imagem"), "err"); return; }
+    const peek = await loadVaultFile(d.path);
+    if (peek) {
+      MIND.fileContext = peek;
+      thinkTrace("arquivo · " + peek.name, "brain");
+    }
+  } catch (e) {}
+}
+window.analyzeVaultPath = function (rel) {
+  loadVaultFile(rel).then(function (peek) {
+    if (!peek) {
+      try { speak("Não consegui ler esse arquivo, " + CONFIG.address + "."); } catch (e) {}
+      return;
+    }
+    MIND.fileContext = peek;
+    MIND.fileContext.hold = true;
+    runCommand("analisa o arquivo " + peek.name);
+  });
+};
+window.loadVaultFile = loadVaultFile;
+
+async function runCommand(text) {
+  text = String(text || "").trim();
+  if (!text || busy) return;
+  const you = $("you");
+  if (you) you.textContent = "Você: " + text;
+  busy = true;
+  haltRec();
+  setState("thinking");
+  setStat("PENSANDO...");
+  MIND.thoughts = [];
+  thinkTrace("pedido recebido", "recv");
+  MIND.intent = detectIntent(text);
+  if (MIND.intent === "analyze" || /arquivo|file/.test(fold(text)))
+    await attachFileFromText(text);
+  thinkTrace("intenção · " + MIND.intent, "intent");
+  retrieveMemory(text);
+  try {
+    const root = $("faceMode");
+    if (root) root.setAttribute("data-s", "thinking");
+    const st = $("faceStatus");
+    if (st) st.textContent = "pensando";
+  } catch (e) {}
+  persist();
+  collectAlerts();
+  thinkTrace(MIND.recalled.length
+    ? ("memória · " + MIND.recalled.map(n => n.title).slice(0, 3).join(", "))
+    : "sem memória pontual", "mem");
+  autoLearn(text);
+  MIND.analysis = situationBrief();
+  thinkTrace("análise · " + MIND.analysis, "brain");
+  paintMind();
+  history.push({ role: "user", content: text });
+  await new Promise(function (ok) { requestAnimationFrame(function () { setTimeout(ok, 0); }); });
+  try {
+    let raw = "";
+    if (MIND.intent === "digest") {
+      thinkTrace("hub · digest", "intent");
+      await runDigest(false);
+      const say = ($("digestBox") && $("digestBox").textContent) || "";
+      if (say) {
+        history.push({ role: "assistant", content: say.slice(0, 800) });
+        MIND.episodes.push({ t: Date.now(), q: text, a: say.slice(0, 360), intent: "digest" });
+        persistMind();
+      }
+      paintMind();
+      return;
+    }
+    if (MIND.intent === "agenda" || MIND.intent === "mail" || MIND.intent === "news") {
+      thinkTrace("hub · " + MIND.intent, "intent");
+      if (MIND.intent === "agenda") {
+        await refreshCals(false);
+        try { if (typeof window.showFaceAgenda === "function") window.showFaceAgenda(); } catch (e) {}
+      } else if (MIND.intent === "mail") {
+        await refreshEmails(false);
+        try { if (typeof window.showFaceMail === "function") window.showFaceMail(); } catch (e) {}
+      } else {
+        await refreshNews(false);
+        try { if (typeof window.showFaceNews === "function") window.showFaceNews(true); } catch (e) {}
+      }
+      raw = hubLine(text);
+    } else if (MIND.intent === "analyze" && !MIND.fileContext && /arquivo|file|imagem|foto|print|\.(png|jpe?g|webp|gif|pdf)/.test(fold(text))) {
+      raw = "Não achei o arquivo no cofre, " + CONFIG.address + ". Abra Cofre, solte o arquivo e toque ANALISAR, ou diga o nome — analisa o arquivo foto.png.";
+    } else if (CONFIG.brain !== "ollama") {
+      try { if (HUB.tier !== "eco") await probeOllama(); } catch (e) {}
+    }
+    if (!raw && CONFIG.brain === "ollama") {
+      thinkTrace("consultando o cérebro");
+      try { raw = await askOllama(); }
+      catch (e) {
+        thinkTrace("ollama falhou · local");
+        raw = localThink(text);
+        probeOllama().then(function (ok) { if (ok) setBrainBadge(); });
+      }
+    } else if (!raw) {
+      thinkTrace("raciocínio local");
+      raw = localThink(text);
+    }
+    if (!raw) raw = "Não obtive resposta, " + CONFIG.address + ".";
+    const peeled = peelCode(raw);
+    const clean = stripSaves(peeled.spoken || raw);
+    if (peeled.code) {
+      MIND.code = { lang: peeled.lang || "js", preview: peeled.code, topic: text.slice(0, 80) };
+      MIND.snippets = [{ lang: MIND.code.lang, topic: MIND.code.topic, code: peeled.code, t: Date.now() }]
+        .concat(MIND.snippets || []).slice(0, 5);
+      try { if (typeof window.showFaceCode === "function") window.showFaceCode(MIND.code.lang, peeled.code); } catch (e) {}
+      thinkTrace("código · " + MIND.code.lang + " · " + peeled.code.split(/\n/).length + " linhas", "code");
+    } else {
+      thinkTrace("resposta pronta", "ok");
+    }
+    history.push({ role: "assistant", content: clean.slice(0, 800) });
+    MIND.episodes.push({ t: Date.now(), q: text, a: clean.slice(0, 360), intent: MIND.intent });
+    persistMind();
+    const say = clean || "Pronto, senhor. Deixei o trecho no painel.";
+    $("him").textContent = CONFIG.name + ": " + say;
+    formVerdict(text, say);
+    if (MIND.fileContext) MIND.fileContext.hold = false;
+    if (MIND.intent === "vault") {
+      try { if (typeof window.openVault === "function") window.openVault(); } catch (e) {}
+    }
+    paintMind();
+    setStat("FALANDO...");
+    speak(say);
+  } catch (e) {
+    busy = false;
+    const msg = "Não consegui pensar nisso, " + CONFIG.address + ".";
+    $("him").textContent = CONFIG.name + ": " + msg;
+    setStat("FALHA");
+    thinkTrace("falha de pensamento");
+    speak(msg);
+  }
+}
+
+function bez(A, C, B, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * A.x + 2 * u * t * C.x + t * t * B.x,
+    y: u * u * A.y + 2 * u * t * C.y + t * t * B.y
+  };
+}
+
+function flashNode(id) {
+  const el = document.querySelector('[data-nid="' + id + '"]');
+  if (el) el.classList.add("flash");
+}
+
+function renderGraph() {
+  const box = $("graph");
+  const W = 1000, H = 540, cx = 500, cy = 270, rx = 380, ry = 188;
+  const deg = {};
+  NOTES.forEach(n => { deg[n.id] = 0; });
+  REL.forEach(([a, b]) => {
+    if (deg[a] !== undefined) deg[a]++;
+    if (deg[b] !== undefined) deg[b]++;
+  });
+  const pos = {};
+  const n = Math.max(NOTES.length, 1);
+  NOTES.forEach((note, i) => {
+    const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+    pos[note.id] = { x: cx + rx * Math.cos(ang), y: cy + ry * Math.sin(ang), note: note };
+  });
+  let s = "";
+  s += '<defs>';
+  s += '<linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">';
+  s += '<stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#22d3ee"/>';
+  s += '</linearGradient>';
+  s += '<radialGradient id="coreG" cx="50%" cy="40%" r="60%">';
+  s += '<stop offset="0%" stop-color="#c4b5fd"/><stop offset="55%" stop-color="#6d28d9"/><stop offset="100%" stop-color="#1e1033"/>';
+  s += '</radialGradient>';
+  s += '<filter id="glow" x="-60%" y="-60%" width="220%" height="220%">';
+  s += '<feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>';
+  s += '</filter>';
+  s += '</defs>';
+  edges = [];
+  REL.forEach(([a, b]) => {
+    const A = pos[a], B = pos[b];
+    if (!A || !B) return;
+    const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+    const C = { x: mx + (cx - mx) * 0.35, y: my + (cy - my) * 0.35 };
+    edges.push({ A: { x: A.x, y: A.y }, C: C, B: { x: B.x, y: B.y } });
+    s += '<path class="edge" d="M ' + A.x + ' ' + A.y + ' Q ' + C.x + ' ' + C.y + ' ' + B.x + ' ' + B.y + '"/>';
+  });
+  NOTES.forEach(note => {
+    const p = pos[note.id];
+    const col = (AREA[note.area] && AREA[note.area].color) || "#888";
+    s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y +
+      '" stroke="' + col + '" stroke-width="0.7" opacity="0.35"/>';
+  });
+  s += '<g class="core-g" filter="url(#glow)">';
+  s += '<circle cx="' + cx + '" cy="' + cy + '" r="34" fill="url(#coreG)"/>';
+  s += '<text x="' + cx + '" y="' + (cy + 8) + '" text-anchor="middle" font-size="26">🧠</text>';
+  s += '</g>';
+  NOTES.forEach(note => {
+    const p = pos[note.id];
+    const col = (AREA[note.area] && AREA[note.area].color) || "#888";
+    const r = 10 + Math.min((deg[note.id] || 0) * 1.6, 12);
+    s += '<g data-nid="' + note.id + '" style="cursor:pointer">';
+    s += '<circle class="ring" cx="' + p.x + '" cy="' + p.y + '" r="' + (r + 8) +
+      '" fill="none" stroke="' + col + '" stroke-width="1.2" opacity="0.45"/>';
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r + '" fill="' + col + '" filter="url(#glow)"/>';
+    s += '<text x="' + p.x + '" y="' + (p.y + r + 16) + '" text-anchor="middle" fill="#e8e4dc" font-size="12">' +
+      escapeXml(note.title) + '</text>';
+    s += '</g>';
+  });
+  for (let i = 0; i < 12; i++) s += '<circle class="syn" r="3.4" fill="#ffffff" opacity="0"/>';
+  box.innerHTML = '<svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg">' + s + '</svg>';
+  box.querySelectorAll("[data-nid]").forEach(el => {
+    el.addEventListener("click", () => openEdit(el.getAttribute("data-nid")));
+  });
+  const areas = new Set(NOTES.map(n => n.area));
+  $("count").textContent = NOTES.length + " notas · " + areas.size + " áreas";
+  let leg = "";
+  areas.forEach(a => {
+    const info = AREA[a];
+    if (!info) return;
+    leg += '<span><i class="dot" style="background:' + info.color + '"></i>' + info.label + "</span>";
+  });
+  leg += '<span class="ok">✓ contexto injetado em todos os comandos do ' + CONFIG.name + "</span>";
+  $("legend").innerHTML = leg;
+  if (raf) cancelAnimationFrame(raf);
+  const syns = box.querySelectorAll(".syn");
+  pulses = [];
+  if (edges.length) {
+    syns.forEach((el, i) => {
+      pulses.push({
+        el: el,
+        t: (i / syns.length),
+        spd: 0.004 + (i % 5) * 0.0012,
+        edge: edges[i % edges.length]
+      });
+    });
+    const loop = () => {
+      if (document.querySelector("#faceMode.on")) { raf = 0; return; }
+      pulses.forEach(p => {
+        p.t += p.spd;
+        if (p.t >= 1) {
+          p.t = 0;
+          p.edge = edges[Math.floor(Math.random() * edges.length)];
+        }
+        const q = bez(p.edge.A, p.edge.C, p.edge.B, p.t);
+        const op = Math.sin(p.t * Math.PI);
+        p.el.setAttribute("cx", q.x);
+        p.el.setAttribute("cy", q.y);
+        p.el.setAttribute("opacity", String(op));
+      });
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+  }
+}
+
+function escapeXml(t) {
+  return String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function fillAreas(sel, cur) {
+  sel.innerHTML = "";
+  Object.keys(AREA).forEach(k => {
+    const o = document.createElement("option");
+    o.value = k;
+    o.textContent = AREA[k].label;
+    if (k === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+function openEdit(id) {
+  const n = NOTES.find(x => x.id === id);
+  if (!n) return;
+  editId = id;
+  $("edTitle").value = n.title;
+  $("edBody").value = n.body;
+  fillAreas($("edArea"), n.area);
+  $("modal").classList.add("on");
+}
+
+function closeEdit() {
+  $("modal").classList.remove("on");
+  editId = null;
+}
+
+$("addN").onclick = () => {
+  const note = { id: "n" + Date.now(), area: "meta", title: "Nova", body: "" };
+  NOTES.push(note);
+  const hub = NOTES.find(x => x.id === "n1") || NOTES[0];
+  if (hub && hub.id !== note.id) REL.push([hub.id, note.id]);
+  persist();
+  renderGraph();
+  openEdit(note.id);
+};
+$("relN").onclick = () => { loadNotes(); persist(); renderGraph(); };
+$("saveN").onclick = () => {
+  const n = NOTES.find(x => x.id === editId);
+  if (!n) return;
+  n.title = $("edTitle").value.trim() || n.title;
+  n.area = $("edArea").value;
+  n.body = $("edBody").value.trim();
+  persist();
+  renderGraph();
+  closeEdit();
+};
+$("delN").onclick = () => {
+  if (!editId) return;
+  NOTES = NOTES.filter(n => n.id !== editId);
+  REL = REL.filter(([a, b]) => a !== editId && b !== editId);
+  persist();
+  renderGraph();
+  closeEdit();
+};
+$("clsN").onclick = closeEdit;
+$("modal").addEventListener("click", e => { if (e.target === $("modal")) closeEdit(); });
+
+$("typed").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const v = $("typed").value.trim();
+  if (!v) return;
+  $("typed").value = "";
+  runCommand(v);
+});
+$("mic").onclick = () => { armed = true; setState("listening"); startRec(); setStat("OUVINDO..."); };
+$("stop").onclick = stopTalk;
+$("orb").onclick = () => { armed = true; setState("listening"); startRec(); setStat("OUVINDO..."); };
+
+$("go").onclick = () => {
+  $("boot").classList.add("out");
+  $("gate").classList.add("out");
+  $("app").classList.add("on");
+  setupRec();
+  loadVoices();
+  renderGraph();
+  probeOllama().then(ok => {
+    setBrainBadge();
+    if (ok) setStat("OLLAMA ONLINE");
+  });
+  const focus = NOTES.find(n => n.area === "projetos") || NOTES.find(n => n.id === "n1");
+  const hello = focus
+    ? ("Sistemas online, " + CONFIG.address + ". Sigo com " + focus.title + " em mente. Estou ouvindo.")
+    : ("Sistemas online. Estou ouvindo, " + CONFIG.address + ".");
+  const kick = () => {
+    armed = true;
+    setStat("OUVINDO...");
+    setState("listening");
+    startRec();
+  };
+  if (typeof shouldAutoDigest === "function" && shouldAutoDigest()) {
+    kick();
+    runDigest(true);
+  } else {
+    $("him").textContent = CONFIG.name + ": " + hello;
+    speak(hello, kick);
+  }
+  if (typeof bootHub === "function") bootHub();
+};
+
+function beatAgent(id, payload) {
+  api("/api/agents/beat", {
+    method: "POST",
+    timeout: 6000,
+    body: JSON.stringify(Object.assign({ id: id }, payload || {}))
+  }).catch(function () {});
+}
+const HUB = {
+  days: 7,
+  mailN: 20,
+  mailMs: 15 * 60 * 1000,
+  newsMs: 30 * 60 * 1000,
+  topics: ["tecnologia", "economia"],
+  newsN: 5,
+  city: "São Paulo",
+  economy: true,
+  tier: "eq"
+};
+let CALS = [];
+let ACCOUNTS = [];
+let EVENTS = [];
+let MAILS = [];
+let NEWS = {};
+let antenaOk = false;
+let countdownT = 0;
+
+function lsGet(k, fb) {
+  try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? fb : v; } catch (e) { return fb; }
+}
+function lsSet(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function todayKey() {
+  const d = new Date();
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+function relTime(d) {
+  const ms = Date.now() - (d instanceof Date ? d.getTime() : +new Date(d));
+  const m = Math.max(0, Math.round(ms / 60000));
+  if (m < 60) return "há " + m + " min";
+  const h = Math.round(m / 60);
+  if (h < 24) return "há " + h + " h";
+  return "há " + Math.round(h / 24) + " d";
+}
+function leftTime(d) {
+  let s = Math.max(0, Math.floor((d.getTime() - Date.now()) / 1000));
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60);
+  if (h <= 0 && m <= 0) return "agora";
+  if (h <= 0) return "em " + m + "min";
+  return "em " + h + "h " + m + "min";
+}
+
+function loadHubCfg() {
+  HUB.economy = localStorage.getItem("jarvis_economy") !== "0";
+  HUB.tier = localStorage.getItem("jarvis_tier") || "eq";
+  CALS = lsGet("jarvis_calendars", [
+    { id: "c1", name: "Agenda 1", color: "#ff6a1a", url: "" },
+    { id: "c2", name: "Agenda 2", color: "#e11d2e", url: "" }
+  ]);
+  ACCOUNTS = lsGet("jarvis_emails", [
+    { id: "e1", nick: "Gmail", color: "#ff6a1a", user: "", pass: "", host: "imap.gmail.com" }
+  ]);
+  $("ecoChk").checked = HUB.economy;
+  $("tierSel").value = HUB.tier;
+  applyTier(false);
+}
+function applyTier(probe) {
+  if (HUB.tier === "eco") {
+    CONFIG.brain = "local";
+    setBrainBadge();
+    return;
+  }
+  if (probe) probeOllama().then(function () { setBrainBadge(); });
+}
+
+async function pingAntena() {
+  try {
+    await api("/api/health", { timeout: 4000 });
+    antenaOk = true;
+  } catch (e) { antenaOk = false; }
+  return antenaOk;
+}
+
+function openPanel(id) {
+  document.querySelectorAll(".hub button").forEach(b => b.classList.toggle("on", b.getAttribute("data-pan") === id));
+  ["agenda", "mail", "news", "digest"].forEach(p => {
+    const el = $("pan" + p.charAt(0).toUpperCase() + p.slice(1));
+    if (el) el.classList.toggle("on", p === id);
+  });
+  if (id === "agenda") refreshCals(false);
+  if (id === "mail") refreshEmails(false);
+  if (id === "news") refreshNews(false);
+}
+
+document.querySelectorAll(".hub button").forEach(b => {
+  b.onclick = () => {
+    const id = b.getAttribute("data-pan");
+    openPanel(id);
+    if (id === "digest") runDigest(false);
+  };
+});
+
+function antenaWarn() {
+  return '<p class="warn">ANTENA OFFLINE — rode o Fenix.bat</p>';
+}
+function normCalUrl(u) {
+  return String(u || "").trim().replace(/^webcal:/i, "https:");
+}
+
+function unfoldICS(t) {
+  return String(t).replace(/\r\n/g, "\n").replace(/\n[ \t]/g, "");
+}
+function icsProps(block) {
+  const map = {};
+  block.split("\n").forEach(line => {
+    const i = line.indexOf(":");
+    if (i < 0) return;
+    const left = line.slice(0, i);
+    const val = line.slice(i + 1);
+    const name = left.split(";")[0].toUpperCase();
+    if (!map[name]) map[name] = [];
+    map[name].push({ raw: left, val: val.replace(/\\n/g, " ").replace(/\\,/g, ",") });
+  });
+  return map;
+}
+function parseICSDate(left, val) {
+  const params = {};
+  left.split(";").slice(1).forEach(p => {
+    const eq = p.indexOf("=");
+    if (eq > 0) params[p.slice(0, eq).toUpperCase()] = p.slice(eq + 1);
+  });
+  const v = val.trim();
+  if (params.VALUE === "DATE" || /^\d{8}$/.test(v)) {
+    return { date: new Date(+v.slice(0, 4), +v.slice(4, 6) - 1, +v.slice(6, 8), 0, 0, 0), allDay: true };
+  }
+  const z = /Z$/i.test(v);
+  const x = v.replace(/Z$/i, "");
+  const y = +x.slice(0, 4), mo = +x.slice(4, 6) - 1, d = +x.slice(6, 8);
+  const h = +x.slice(9, 11) || 0, mi = +x.slice(11, 13) || 0, s = +x.slice(13, 15) || 0;
+  if (z) return { date: new Date(Date.UTC(y, mo, d, h, mi, s)), allDay: false };
+  return { date: new Date(y, mo, d, h, mi, s), allDay: false };
+}
+function parseRRULE(s) {
+  const o = { FREQ: "DAILY", INTERVAL: 1 };
+  String(s).split(";").forEach(p => {
+    const i = p.indexOf("=");
+    if (i < 0) return;
+    o[p.slice(0, i).toUpperCase()] = p.slice(i + 1);
+  });
+  o.INTERVAL = +o.INTERVAL || 1;
+  if (o.COUNT) o.COUNT = +o.COUNT;
+  if (o.UNTIL) {
+    const u = parseICSDate("DTSTART", o.UNTIL);
+    o.untilDate = u.date;
+  }
+  if (o.BYDAY) o.BYDAY = o.BYDAY.split(",");
+  return o;
+}
+function addFreq(d, freq, n) {
+  const x = new Date(d.getTime());
+  if (freq === "DAILY") x.setDate(x.getDate() + n);
+  else if (freq === "WEEKLY") x.setDate(x.getDate() + 7 * n);
+  else if (freq === "MONTHLY") x.setMonth(x.getMonth() + n);
+  else if (freq === "YEARLY") x.setFullYear(x.getFullYear() + n);
+  else x.setDate(x.getDate() + n);
+  return x;
+}
+const DOW = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+function expandEvent(ev, winA, winB) {
+  const out = [];
+  const ex = {};
+  (ev.exdate || []).forEach(t => { ex[t] = 1; });
+  const dur = ev.end.getTime() - ev.start.getTime();
+  if (!ev.rrule) {
+    if (ev.start < winB && ev.end > winA) out.push(ev);
+    return out;
+  }
+  const r = ev.rrule;
+  let cursor = new Date(ev.start.getTime());
+  let n = 0, guard = 0;
+  while (guard++ < 400) {
+    if (r.COUNT && n >= r.COUNT) break;
+    if (r.untilDate && cursor > r.untilDate) break;
+    if (cursor > winB) break;
+    const key = cursor.toISOString().slice(0, 16);
+    let ok = cursor >= ev.start;
+    if (r.BYDAY && r.FREQ === "WEEKLY") {
+      ok = r.BYDAY.some(b => {
+        const code = b.replace(/^-?\d+/, "");
+        return cursor.getDay() === DOW[code];
+      });
+    }
+    if (ok && cursor < winB && (cursor.getTime() + dur) > winA && !ex[key]) {
+      out.push({
+        title: ev.title, loc: ev.loc, allDay: ev.allDay, color: ev.color, cal: ev.cal,
+        start: new Date(cursor.getTime()), end: new Date(cursor.getTime() + dur)
+      });
+      n++;
+    }
+    if (r.FREQ === "WEEKLY" && r.BYDAY) cursor.setDate(cursor.getDate() + 1);
+    else cursor = addFreq(ev.start, r.FREQ, (Math.floor(guard / ((r.FREQ === "WEEKLY" && r.BYDAY) ? 1 : 1))) || 1);
+    if (!(r.FREQ === "WEEKLY" && r.BYDAY)) cursor = addFreq(ev.start, r.FREQ, n + (ok ? 0 : 1));
+    if (!(r.FREQ === "WEEKLY" && r.BYDAY)) {
+      cursor = addFreq(ev.start, r.FREQ, n + 1);
+    }
+    if (guard > 380) break;
+  }
+  return out;
+}
+
+function expandEventSafe(ev, winA, winB) {
+  try {
+    if (!ev.rrule) {
+      if (ev.start < winB && ev.end > winA) return [ev];
+      return [];
+    }
+    const r = ev.rrule;
+    const dur = Math.max(ev.end.getTime() - ev.start.getTime(), ev.allDay ? 86400000 : 3600000);
+    const ex = {};
+    (ev.exdate || []).forEach(t => { ex[t] = 1; });
+    const out = [];
+    let count = 0;
+    if (r.FREQ === "WEEKLY" && r.BYDAY) {
+      const startDay = new Date(winA.getFullYear(), winA.getMonth(), winA.getDate());
+      for (let i = -14; i < 60; i++) {
+        const day = new Date(startDay.getTime());
+        day.setDate(startDay.getDate() + i);
+        if (day < ev.start && day < new Date(ev.start.getFullYear(), ev.start.getMonth(), ev.start.getDate())) continue;
+        if (r.untilDate && day > r.untilDate) continue;
+        const code = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][day.getDay()];
+        const hit = r.BYDAY.some(b => b.replace(/^-?\d+/, "") === code);
+        if (!hit) continue;
+        const inst = new Date(day.getFullYear(), day.getMonth(), day.getDate(), ev.start.getHours(), ev.start.getMinutes(), ev.start.getSeconds());
+        if (inst < ev.start && inst.toDateString() !== ev.start.toDateString()) continue;
+        if (r.COUNT && count >= r.COUNT) break;
+        const key = inst.toISOString().slice(0, 16);
+        if (ex[key]) continue;
+        if (inst < winB && inst.getTime() + dur > winA.getTime()) {
+          out.push({ title: ev.title, loc: ev.loc, allDay: ev.allDay, color: ev.color, cal: ev.cal, start: inst, end: new Date(inst.getTime() + dur) });
+        }
+        count++;
+      }
+      return out;
+    }
+    let cursor = new Date(ev.start.getTime());
+    for (let k = 0; k < 366; k++) {
+      if (r.COUNT && k >= r.COUNT) break;
+      if (r.untilDate && cursor > r.untilDate) break;
+      if (cursor > winB) break;
+      const key = cursor.toISOString().slice(0, 16);
+      if (!ex[key] && cursor < winB && cursor.getTime() + dur > winA.getTime()) {
+        out.push({ title: ev.title, loc: ev.loc, allDay: ev.allDay, color: ev.color, cal: ev.cal, start: new Date(cursor.getTime()), end: new Date(cursor.getTime() + dur) });
+      }
+      cursor = addFreq(ev.start, r.FREQ, k + 1);
+    }
+    return out;
+  } catch (e) { return ev.start < winB && ev.end > winA ? [ev] : []; }
+}
+
+function parseICS(text, cal) {
+  const raw = unfoldICS(text);
+  const parts = raw.split("BEGIN:VEVENT");
+  const winA = new Date(); winA.setHours(0, 0, 0, 0);
+  const winB = new Date(winA.getTime()); winB.setDate(winB.getDate() + HUB.days + 1);
+  const events = [];
+  for (let i = 1; i < parts.length; i++) {
+    const chunk = parts[i].split("END:VEVENT")[0];
+    const p = icsProps(chunk);
+    if (!p.DTSTART) continue;
+    const a = parseICSDate(p.DTSTART[0].raw, p.DTSTART[0].val);
+    let b;
+    if (p.DTEND) b = parseICSDate(p.DTEND[0].raw, p.DTEND[0].val);
+    else {
+      b = { date: new Date(a.date.getTime() + (a.allDay ? 86400000 : 3600000)), allDay: a.allDay };
+    }
+    const ev = {
+      title: (p.SUMMARY && p.SUMMARY[0].val) || "(sem título)",
+      loc: (p.LOCATION && p.LOCATION[0].val) || "",
+      start: a.date,
+      end: b.date,
+      allDay: a.allDay,
+      color: cal.color,
+      cal: cal.name,
+      rrule: p.RRULE ? parseRRULE(p.RRULE[0].val) : null,
+      exdate: (p.EXDATE || []).map(x => parseICSDate(x.raw, x.val).date.toISOString().slice(0, 16))
+    };
+    expandEventSafe(ev, winA, winB).forEach(x => events.push(x));
+  }
+  return events;
+}
+
+async function refreshCals(force) {
+  const box = $("agendaBox");
+  CALS.forEach(function (c) { if (c.url) c.url = normCalUrl(c.url); });
+  const linked = CALS.filter(c => c.url);
+  if (!linked.length) {
+    if (box) box.innerHTML = '<p class="tip">Nenhuma agenda com link ainda. Abra ⚙ e cole o endereço secreto iCal (Google Agenda → ⚙ → Integrar → iCal).</p>';
+    EVENTS = [];
+    beatAgent("agenda", { on: false, detail: "sem link iCal" });
+    return;
+  }
+  if (!force && EVENTS.length && HUB._calTs && Date.now() - HUB._calTs < 10 * 60 * 1000) {
+    renderAgenda();
+    return;
+  }
+  const ok = await pingAntena();
+  if (!ok) { if (box) box.innerHTML = antenaWarn(); return; }
+  const all = [];
+  const errs = [];
+  for (let i = 0; i < linked.length; i++) {
+    const c = linked[i];
+    try {
+      const r = await fetch(ANTENA + "/proxy?url=" + encodeURIComponent(c.url));
+      if (!r.ok) throw new Error("http " + r.status);
+      const ics = await r.text();
+      if (ics.indexOf("BEGIN:VCALENDAR") < 0) throw new Error("ics");
+      parseICS(ics, c).forEach(e => all.push(e));
+    } catch (e) {
+      errs.push(c.name);
+    }
+  }
+  EVENTS = all.sort((a, b) => a.start - b.start);
+  HUB._calTs = Date.now();
+  renderAgenda(errs);
+  beatAgent("agenda", {
+    on: true,
+    metric: EVENTS.length + " eventos",
+    detail: errs.length ? "falha em " + errs.join(", ") : "timeline ok",
+    error: errs.length ? errs.join(", ") : null
+  });
+}
+
+function dayLabel(d) {
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((x - t) / 86400000);
+  if (diff === 0) return "HOJE";
+  if (diff === 1) return "AMANHÃ";
+  const names = ["DOMINGO", "SEGUNDA", "TERÇA", "QUARTA", "QUINTA", "SEXTA", "SÁBADO"];
+  return names[d.getDay()] + " · " + d.toLocaleDateString("pt-BR");
+}
+function fmtHour(ev) {
+  if (ev.allDay) return "DIA TODO";
+  return ev.start.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+function nextEvent() {
+  const now = Date.now();
+  return EVENTS.filter(e => e.end.getTime() > now).sort((a, b) => a.start - b.start)[0] || null;
+}
+function todayEvents() {
+  const a = new Date(); a.setHours(0, 0, 0, 0);
+  const b = new Date(a); b.setDate(b.getDate() + 1);
+  return EVENTS.filter(e => e.start < b && e.end > a).sort((a, c) => a.start - c.start);
+}
+function renderAgenda(errs) {
+  const box = $("agendaBox");
+  if (!box) return;
+  const now = Date.now();
+  const nxt = nextEvent();
+  let html = '<button class="mini" type="button" id="relCal">↻ atualizar</button>';
+  if (errs && errs.length) html += '<p class="warn">Não li: ' + errs.join(", ") + "</p>";
+  if (!EVENTS.length) html += "<p>Nenhum evento na janela.</p>";
+  let last = "";
+  EVENTS.forEach(e => {
+    const lab = dayLabel(e.start);
+    if (lab !== last) { html += '<div class="dayh">' + lab + "</div>"; last = lab; }
+    const isNxt = nxt && nxt === e;
+    html += '<div class="ev"><i class="ball" style="background:' + e.color + '"></i>';
+    html += '<span class="when">' + fmtHour(e) + "</span><div><strong>" + escapeXml(e.title) + "</strong>";
+    if (e.loc) html += '<div class="meta">' + escapeXml(e.loc) + "</div>";
+    if (isNxt && !e.allDay && e.start.getTime() > now) html += '<div class="nxt" data-cd="' + e.start.getTime() + '">próximo · ' + leftTime(e.start) + "</div>";
+    html += "</div></div>";
+  });
+  box.innerHTML = html;
+  const btn = $("relCal");
+  if (btn) btn.onclick = () => refreshCals(true);
+}
+
+function heurTriage(from, subj, snip) {
+  const t = fold(from + " " + subj + " " + snip);
+  if (/noreply|no-reply|newsletter|unsubscribe|promoc|oferta|desconto|utm_|notification|notificacao|mailer-daemon|promo /.test(t))
+    return { balde: "ruido", resumo: "Automático ou promocional.", local: true };
+  if (/\?|prazo|fatura|reunia|por favor|urgente|preciso|confirme|rsvp|boleto|aguardando|amanha|hoje/.test(t))
+    return { balde: "acao", resumo: (subj || "Pedido que requer ação").slice(0, 120), local: true };
+  return { balde: "info", resumo: (subj || "Atualização").slice(0, 120), local: true };
+}
+
+async function askOllamaRaw(system, user) {
+  const ac = new AbortController();
+  const t = setTimeout(function () { ac.abort(); }, 14000);
+  try {
+    const res = await fetch("http://127.0.0.1:11434/api/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal: ac.signal,
+      body: JSON.stringify({
+        model: talkModel(),
+        stream: false,
+        options: { num_predict: 180 },
+        messages: [{ role: "system", content: system }, { role: "user", content: user }]
+      })
+    });
+    if (!res.ok) throw new Error("http");
+    const data = await res.json();
+    const text = (data.message && data.message.content) || "";
+    if (text) return text;
+    throw new Error("empty");
+  } catch (e) {
+    const r = await fetch(ANTENA + "/api/brain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        intent: "chat",
+        model: talkModel(),
+        messages: [{ role: "system", content: system }, { role: "user", content: user }]
+      })
+    });
+    if (!r.ok) return "";
+    const d = await r.json();
+    return d.text || "";
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function triageBatch(list) {
+  const cache = lsGet("jarvis_email_triage", {});
+  const fresh = list.filter(m => !cache[m.id]);
+  const done = list.map(m => {
+    const c = cache[m.id];
+    return c ? Object.assign({}, m, c) : m;
+  });
+  if (!fresh.length) return done;
+  let mapped = null;
+  if (CONFIG.brain === "ollama" && HUB.tier !== "eco") {
+    try {
+      const payload = fresh.map(m => ({
+        id: m.id,
+        from: m.remetente,
+        subj: m.assunto,
+        snip: (m.trecho || "").slice(0, 200)
+      }));
+      const raw = await askOllamaRaw(
+        "Classifique e-mails. Responda APENAS JSON: [{id, balde: acao|info|ruido, resumo: uma frase}]. AÇÃO: pede resposta, tarefa, decisão ou prazo. INFO: vale saber, sem exigência. RUÍDO: promo, newsletter, automático.",
+        JSON.stringify(payload)
+      );
+      const json = raw.replace(/```json|```/g, "");
+      const i = json.indexOf("["), j = json.lastIndexOf("]");
+      mapped = JSON.parse(json.slice(i, j + 1));
+    } catch (e) { mapped = null; }
+  }
+  fresh.forEach(m => {
+    const hit = mapped && mapped.find(x => x.id === m.id);
+    const t = hit
+      ? { balde: hit.balde, resumo: hit.resumo, local: false }
+      : heurTriage(m.remetente, m.assunto, m.trecho);
+    cache[m.id] = t;
+  });
+  lsSet("jarvis_email_triage", cache);
+  return list.map(m => Object.assign({}, m, cache[m.id] || heurTriage(m.remetente, m.assunto, m.trecho)));
+}
+
+async function refreshEmails(force) {
+  const box = $("mailBox");
+  const ready = ACCOUNTS.filter(a => a.user && a.pass);
+  if (!ready.length) {
+    if (box) box.innerHTML = '<p class="tip">Nenhuma conta configurada. Abra ⚙: e-mail + senha de app (16 letras, 2 etapas ligadas).</p>';
+    MAILS = [];
+    $("acaoBadge").textContent = "⚡ 0";
+    beatAgent("emails", { on: false, detail: "sem senha de app" });
+    return;
+  }
+  if (!force && MAILS.length && HUB._mailTs && Date.now() - HUB._mailTs < HUB.mailMs) {
+    renderMails();
+    return;
+  }
+  const ok = await pingAntena();
+  if (!ok) { if (box) box.innerHTML = antenaWarn(); return; }
+  const all = [];
+  const errs = [];
+  for (let i = 0; i < ready.length; i++) {
+    const a = ready[i];
+    try {
+      const r = await fetch(ANTENA + "/emails", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          host: a.host || "imap.gmail.com",
+          usuario: String(a.user || "").trim(),
+          senhaApp: String(a.pass || "").replace(/\s+/g, ""),
+          quantidade: HUB.mailN
+        })
+      });
+      if (r.status === 401) { errs.push(a.nick + ": senha de app inválida ou 2 etapas desativada — refaça em myaccount.google.com/apppasswords"); continue; }
+      if (!r.ok) throw new Error("http");
+      const rows = await r.json();
+      rows.forEach(m => {
+        m.conta = a.nick;
+        m.color = a.color;
+        all.push(m);
+      });
+    } catch (e) { errs.push(a.nick); }
+  }
+  MAILS = await triageBatch(all);
+  HUB._mailTs = Date.now();
+  renderMails(errs);
+  beatAgent("emails", {
+    on: true,
+    metric: MAILS.length + " lidos",
+    detail: errs.length ? "falha em conta" : (MAILS.filter(m => m.balde === "acao").length + " pedem ação"),
+    error: errs.length ? "falha de login" : null
+  });
+}
+
+function renderMails(errs) {
+  const box = $("mailBox");
+  if (!box) return;
+  const ac = MAILS.filter(m => m.balde === "acao");
+  const inf = MAILS.filter(m => m.balde === "info");
+  const ru = MAILS.filter(m => m.balde === "ruido");
+  $("acaoBadge").textContent = "⚡ " + ac.length;
+  function item(m) {
+    const when = m.data ? relTime(m.data) : "";
+    return '<div class="mail" onclick="this.classList.toggle(\'open\')"><i class="ball" style="background:' + (m.color || "#888") + '"></i> ' +
+      "<strong>" + escapeXml(m.remetente || "") + "</strong> · " + escapeXml(m.resumo || m.assunto) +
+      '<div class="meta">' + escapeXml(m.conta || "") + " · " + when + (m.local ? " · triagem local" : "") + "</div>" +
+      '<div class="snip">' + escapeXml(m.trecho || m.assunto) + "</div></div>";
+  }
+  let html = '<button class="mini" type="button" id="relMail">↻ atualizar</button>';
+  if (errs && errs.length) html += '<p class="warn">' + errs.map(escapeXml).join("<br>") + "</p>";
+  html += '<div class="secA"><h4>⚡ AÇÃO · ' + ac.length + "</h4>" + (ac.map(item).join("") || "<p>Nada pedindo ação.</p>") + "</div>";
+  html += '<div class="secI"><h4>INFO · ' + inf.length + "</h4>" + (inf.map(item).join("") || "<p>—</p>") + "</div>";
+  html += '<div class="secR"><h4 id="togR">RUÍDO · ' + ru.length + ' ▸</h4><div id="ruBox" class="hid">' + ru.map(item).join("") + "</div></div>";
+  box.innerHTML = html;
+  const b = $("relMail"); if (b) b.onclick = () => refreshEmails(true);
+  const t = $("togR");
+  if (t) t.onclick = () => { $("ruBox").classList.toggle("hid"); };
+}
+
+function newsUrl(q) {
+  return "https://news.google.com/rss/search?q=" + encodeURIComponent(q) + "&hl=pt-BR&gl=BR&ceid=BR:pt-419";
+}
+function parseRSS(xml) {
+  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  let items = [].slice.call(doc.querySelectorAll("item"));
+  if (!items.length) items = [].slice.call(doc.querySelectorAll("entry"));
+  return items.slice(0, HUB.newsN).map(it => {
+    let title = (it.querySelector("title") && it.querySelector("title").textContent) || "";
+    const linkEl = it.querySelector("link");
+    const link = (linkEl && (linkEl.getAttribute("href") || linkEl.textContent)) ||
+      ((it.querySelector("guid") && it.querySelector("guid").textContent) || "");
+    const date = (it.querySelector("pubDate") || it.querySelector("updated") || it.querySelector("published") || {}).textContent || "";
+    let fonte = "";
+    const dash = title.lastIndexOf(" - ");
+    if (dash > 0) { fonte = title.slice(dash + 3); title = title.slice(0, dash); }
+    return { title: title.trim(), link: String(link).trim(), fonte: fonte, date: date };
+  });
+}
+function cleanNewsTitle(t) {
+  const i = String(t).lastIndexOf(" - ");
+  return i > 0 ? t.slice(0, i) : t;
+}
+
+async function refreshNews(force) {
+  const box = $("newsBox");
+  const cache = lsGet("jarvis_news", { ts: 0, topics: {} });
+  if (!force && cache.ts && Date.now() - cache.ts < HUB.newsMs && cache.topics) {
+    NEWS = cache.topics;
+    renderNews();
+    return;
+  }
+  const ok = await pingAntena();
+  if (!ok) {
+    if (box) box.innerHTML = antenaWarn();
+    try { if (typeof window.showFaceNews === "function") window.showFaceNews(true); } catch (e) {}
+    return;
+  }
+  const topics = {};
+  for (let i = 0; i < HUB.topics.length; i++) {
+    const q = HUB.topics[i];
+    try {
+      const r = await fetch(ANTENA + "/proxy?url=" + encodeURIComponent(newsUrl(q)));
+      if (!r.ok) throw new Error("http");
+      topics[q] = parseRSS(await r.text());
+    } catch (e) { topics[q] = []; }
+  }
+  NEWS = topics;
+  lsSet("jarvis_news", { ts: Date.now(), topics: topics });
+  renderNews();
+  try { if (typeof window.showFaceNews === "function") window.showFaceNews(); } catch (e) {}
+  let nh = 0;
+  Object.keys(topics).forEach(k => { nh += (topics[k] || []).length; });
+  beatAgent("noticias", { on: true, metric: nh + " manchetes", detail: "radar ok" });
+}
+
+function renderNews() {
+  const box = $("newsBox");
+  let html = '<button class="mini" type="button" id="relNews">↻ atualizar</button>';
+  HUB.topics.forEach(q => {
+    html += '<div class="dayh">' + q.toUpperCase() + "</div><div class=\"news\">";
+    (NEWS[q] || []).forEach(n => {
+      html += '<div class="nitem"><a href="' + escapeXml(n.link) + '" target="_blank" rel="noopener">' +
+        escapeXml(n.title) + "</a><div class=\"meta\">" + escapeXml(n.fonte || "") +
+        (n.date ? " · " + relTime(n.date) : "") + "</div></div>";
+    });
+    html += "</div>";
+  });
+  box.innerHTML = html;
+  const b = $("relNews"); if (b) b.onclick = () => refreshNews(true);
+}
+
+const WMO = { 0: "céu limpo", 1: "principalmente limpo", 2: "parcialmente nublado", 3: "nublado", 45: "neblina", 48: "neblina", 51: "garoa", 61: "chuva", 63: "chuva", 65: "chuva forte", 80: "pancadas", 95: "trovoada" };
+async function getWeather() {
+  try {
+    let geo = lsGet("jarvis_geo", null);
+    if (!geo) {
+      const r = await fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(HUB.city) + "&count=1&language=pt");
+      const d = await r.json();
+      const hit = d.results && d.results[0];
+      if (!hit) return null;
+      geo = { lat: hit.latitude, lon: hit.longitude };
+      lsSet("jarvis_geo", geo);
+    }
+    const r2 = await fetch("https://api.open-meteo.com/v1/forecast?latitude=" + geo.lat + "&longitude=" + geo.lon + "&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=1");
+    const w = await r2.json();
+    const code = (w.current && w.current.weather_code) || 0;
+    return {
+      t: Math.round(w.current.temperature_2m),
+      max: Math.round(w.daily.temperature_2m_max[0]),
+      min: Math.round(w.daily.temperature_2m_min[0]),
+      txt: WMO[code] || "tempo instável"
+    };
+  } catch (e) { return null; }
+}
+
+function compactAgendaLine() {
+  const evs = todayEvents().slice(0, 15);
+  if (!evs.length) return "Agenda de hoje: livre.";
+  return "Agenda de hoje: " + evs.map(e => fmtHour(e) + " " + e.title).join(" · ");
+}
+function compactMailLine() {
+  const n = MAILS.filter(m => m.balde === "acao").length;
+  return "E-mails pedindo ação: " + n + ".";
+}
+function packDigest() {
+  const now = new Date();
+  const dias = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const metas = NOTES.filter(n => n.area === "metas" || n.area === "trabalho" || n.area === "projetos").slice(0, 2);
+  return {
+    data: dias[now.getDay()] + ", " + now.toLocaleDateString("pt-BR"),
+    agenda: todayEvents().slice(0, 15).map(e => fmtHour(e) + " · " + e.title),
+    acao: MAILS.filter(m => m.balde === "acao").map(m => m.resumo || m.assunto),
+    mailN: MAILS.length,
+    news: HUB.topics.map(t => ({ t: t, titles: (NEWS[t] || []).slice(0, 3).map(n => cleanNewsTitle(n.title)) })),
+    metas: metas.map(n => n.title + ": " + n.body)
+  };
+}
+function templateDigest(p, clima) {
+  let s = "Bom dia, " + CONFIG.address + ". Hoje é " + p.data + ".";
+  if (clima) s += " Em " + HUB.city + ", " + clima.t + " graus, " + clima.txt + ".";
+  if (p.agenda.length) s += " Na agenda: " + p.agenda.join(". ") + ".";
+  else s += " Agenda livre hoje.";
+  s += " Chegaram " + p.mailN + " e-mails; " + p.acao.length + " pedem ação";
+  if (p.acao.length) s += ": " + p.acao.slice(0, 4).join("; ");
+  s += ".";
+  p.news.forEach(n => {
+    if (n.titles.length) s += " Em " + n.t + ": " + n.titles.join("; ") + ".";
+  });
+  if (p.metas.length) s += " Foco do dia: " + p.metas[0] + ".";
+  else s += " Foco do dia: avançar um passo rumo a especialista em IA.";
+  return s;
+}
+
+function shouldAutoDigest() {
+  return localStorage.getItem("jarvis_last_digest") !== todayKey();
+}
+
+async function runDigest(auto) {
+  openPanel("digest");
+  setState("thinking");
+  setStat("MONTANDO DIGEST...");
+  await refreshCals(false);
+  await refreshEmails(false);
+  await refreshNews(false);
+  const clima = await getWeather();
+  const pack = packDigest();
+  let text = templateDigest(pack, clima);
+  if (CONFIG.brain === "ollama" && HUB.tier !== "eco" && (!auto || HUB.economy)) {
+    try {
+      const raw = await askOllamaRaw(
+        CONFIG.name + " é um assistente " + CONFIG.persona + ", trata o usuário de " + CONFIG.address +
+          ". Escreva um briefing corrido, natural e falável em pt-BR, sem markdown nem emojis, terminando com uma frase de foco do dia. 2 a 8 frases.",
+        JSON.stringify(pack) + (clima ? " Clima: " + JSON.stringify(clima) : "")
+      );
+      if (raw) text = stripSaves(raw);
+    } catch (e) {}
+  }
+  if (auto) localStorage.setItem("jarvis_last_digest", todayKey());
+  $("digestBox").textContent = text;
+  $("him").textContent = CONFIG.name + ": " + text;
+  beatAgent("digest", { on: true, metric: "briefing", detail: "digest montado" });
+  speak(text);
+}
+
+function speakToday() {
+  const evs = todayEvents();
+  const msg = evs.length
+    ? ("Hoje, " + CONFIG.address + ": " + evs.map(e => fmtHour(e) + ", " + e.title).join(". ") + ".")
+    : ("Agenda livre hoje, " + CONFIG.address + ".");
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+function speakNext() {
+  const n = nextEvent();
+  const msg = n
+    ? ("Próximo compromisso: " + n.title + ", " + fmtHour(n) + ", " + leftTime(n.start) + ", " + CONFIG.address + ".")
+    : ("Nenhum compromisso à frente na janela, " + CONFIG.address + ".");
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+function speakWeek() {
+  const msg = EVENTS.length
+    ? ("Nos próximos dias: " + EVENTS.slice(0, 12).map(e => dayLabel(e.start) + " " + fmtHour(e) + " " + e.title).join(". ") + ".")
+    : ("Nada na agenda da semana, " + CONFIG.address + ".");
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+function speakMails() {
+  const ac = MAILS.filter(m => m.balde === "acao");
+  let msg = MAILS.length + " e-mails. " + ac.length + " de ação, " +
+    MAILS.filter(m => m.balde === "info").length + " de info, " +
+    MAILS.filter(m => m.balde === "ruido").length + " de ruído.";
+  if (ac.length) msg += " Ação: " + ac.map(m => m.resumo || m.assunto).join(". ");
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+function speakActionOnly() {
+  const ac = MAILS.filter(m => m.balde === "acao");
+  const msg = ac.length
+    ? ("Sim, " + ac.length + " pedem ação: " + ac.map(m => m.resumo || m.assunto).join(". "))
+    : ("Nenhum e-mail pedindo ação, " + CONFIG.address + ". A caixa está calma.");
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+function speakNews(assunto) {
+  const key = assunto ? HUB.topics.find(t => fold(t).indexOf(fold(assunto).trim()) >= 0 || fold(assunto).indexOf(fold(t)) >= 0) : null;
+  const keys = key ? [key] : HUB.topics;
+  let msg = "";
+  keys.forEach(t => {
+    const items = NEWS[t] || [];
+    if (!items.length) return;
+    msg += "Em " + t + ": " + items.map(n => cleanNewsTitle(n.title)).join(". ") + ". ";
+  });
+  if (!msg) msg = "Sem manchetes no radar ainda, " + CONFIG.address + ".";
+  $("him").textContent = CONFIG.name + ": " + msg;
+  speak(msg);
+}
+
+async function routeHub(text) {
+  const q = fold(text);
+  if (/atualizar e-?mails|atualizar emails/.test(q)) {
+    openPanel("mail"); await refreshEmails(true);
+    speak("E-mails atualizados, " + CONFIG.address + "."); return true;
+  }
+  if (/atualizar noticias/.test(q)) {
+    openPanel("news"); await refreshNews(true);
+    speak("Notícias atualizadas, " + CONFIG.address + "."); return true;
+  }
+  if (/^bom dia\b/.test(q)) { await runDigest(false); return true; }
+  if (/proxima reuniao|proximo compromisso|proxima reuniao/.test(q)) {
+    openPanel("agenda"); if (!EVENTS.length) await refreshCals(false); speakNext(); return true;
+  }
+  if (/agenda da semana/.test(q)) {
+    openPanel("agenda"); if (!EVENTS.length) await refreshCals(false); speakWeek(); return true;
+  }
+  if (/minha agenda|o que eu tenho hoje|compromissos de hoje/.test(q)) {
+    openPanel("agenda"); if (!EVENTS.length) await refreshCals(false); speakToday(); return true;
+  }
+  if (/tem e-?mail importante/.test(q)) {
+    openPanel("mail"); if (!MAILS.length) await refreshEmails(false); speakActionOnly(); return true;
+  }
+  if (/meus e-?mails|meus emails/.test(q)) {
+    openPanel("mail"); if (!MAILS.length) await refreshEmails(false); speakMails(); return true;
+  }
+  const nd = q.match(/noticias de (.+)/);
+  if (nd) {
+    if (!Object.keys(NEWS).length) await refreshNews(false);
+    try { if (typeof window.showFaceNews === "function") window.showFaceNews(true); } catch (e) {}
+    speakNews(nd[1]); return true;
+  }
+  if (/^(as )?noticias$/.test(q) || /^noticias\b/.test(q) && q.length < 24) {
+    if (!Object.keys(NEWS).length) await refreshNews(true);
+    try { if (typeof window.showFaceNews === "function") window.showFaceNews(true); } catch (e) {}
+    speakNews(null); return true;
+  }
+  return false;
+}
+
+const __runCommandPart1 = runCommand;
+runCommand = async function(text) {
+  text = String(text || "").trim();
+  if (!text || busy) return;
+  const you = $("you");
+  if (you) you.textContent = "Você: " + text;
+  try {
+    if (typeof thinkTrace === "function") thinkTrace("triagem");
+    if (await routeHub(text)) {
+      MIND.intent = "hub";
+      MIND.analysis = situationBrief();
+      thinkTrace("módulo do hub");
+      history.push({ role: "user", content: text });
+      const say = (($("him") && $("him").textContent) || "").replace(/^[^:]+:\s*/, "");
+      if (say) history.push({ role: "assistant", content: say.slice(0, 800) });
+      MIND.episodes.push({ t: Date.now(), q: text, a: say.slice(0, 360), intent: "hub" });
+      persistMind();
+      paintMind();
+      return;
+    }
+  } catch (e) {}
+  return __runCommandPart1(text);
+};
+
+const __systemPromptPart1 = systemPrompt;
+systemPrompt = function() {
+  const base = __systemPromptPart1();
+  if (MIND.fileContext || MIND.intent === "analyze" || MIND.intent === "code") return base;
+  return base + "\nAgenda/e-mail/notícias: se o senhor pedir, use o que já está no hub. " + compactAgendaLine() + " " + compactMailLine();
+};
+
+function slotCal(c) {
+  return '<div class="slot" data-id="' + c.id + '"><div class="row2">' +
+    '<input data-k="name" value="' + escapeXml(c.name) + '" placeholder="Nome">' +
+    '<input data-k="color" type="color" value="' + (c.color || "#ff6a1a") + '" style="max-width:56px">' +
+    '</div><input data-k="url" value="' + escapeXml(c.url || "") + '" placeholder="Endereço secreto iCal" style="width:100%;margin-top:6px;background:#0a0a0c;border:1px solid #2a2a30;color:#f3f0ea;padding:8px"></div>';
+}
+function slotMail(a) {
+  return '<div class="slot" data-id="' + a.id + '"><div class="row2">' +
+    '<input data-k="nick" value="' + escapeXml(a.nick) + '" placeholder="Apelido">' +
+    '<input data-k="color" type="color" value="' + (a.color || "#ff6a1a") + '" style="max-width:56px">' +
+    '</div><input data-k="user" value="' + escapeXml(a.user || "") + '" placeholder="e-mail" style="width:100%;margin-top:6px;background:#0a0a0c;border:1px solid #2a2a30;color:#f3f0ea;padding:8px">' +
+    '<input data-k="pass" type="password" value="' + escapeXml(a.pass || "") + '" placeholder="senha de app" style="width:100%;margin-top:6px;background:#0a0a0c;border:1px solid #2a2a30;color:#f3f0ea;padding:8px"></div>';
+}
+function renderCfg() {
+  $("calSlots").innerHTML = CALS.map(slotCal).join("");
+  $("mailSlots").innerHTML = ACCOUNTS.map(slotMail).join("");
+}
+function readSlots(box, keys) {
+  return [].slice.call(box.querySelectorAll(".slot")).map(el => {
+    const o = { id: el.getAttribute("data-id") };
+    keys.forEach(k => {
+      const i = el.querySelector('[data-k="' + k + '"]');
+      o[k] = i ? i.value : "";
+    });
+    return o;
+  });
+}
+
+$("gear").onclick = () => { renderCfg(); $("cfg").classList.add("on"); };
+$("clsCfg").onclick = () => $("cfg").classList.remove("on");
+$("cfg").addEventListener("click", e => { if (e.target === $("cfg")) $("cfg").classList.remove("on"); });
+$("addCal").onclick = () => {
+  CALS.push({ id: "c" + Date.now(), name: "Agenda " + (CALS.length + 1), color: CONFIG.themeColor, url: "" });
+  renderCfg();
+};
+$("addMail").onclick = () => {
+  ACCOUNTS.push({ id: "e" + Date.now(), nick: "Conta " + (ACCOUNTS.length + 1), color: "#e11d2e", user: "", pass: "", host: "imap.gmail.com" });
+  renderCfg();
+};
+$("saveCfg").onclick = () => {
+  CALS = readSlots($("calSlots"), ["name", "color", "url"]);
+  CALS.forEach(c => { c.url = normCalUrl(c.url); });
+  ACCOUNTS = readSlots($("mailSlots"), ["nick", "color", "user", "pass"]);
+  ACCOUNTS.forEach(a => {
+    a.host = a.host || "imap.gmail.com";
+    a.user = String(a.user || "").trim();
+    a.pass = String(a.pass || "").replace(/\s+/g, "");
+  });
+  lsSet("jarvis_calendars", CALS);
+  lsSet("jarvis_emails", ACCOUNTS);
+  try {
+    api("/api/config", {
+      method: "POST",
+      timeout: 8000,
+      body: JSON.stringify({ cals: CALS, mail: ACCOUNTS, city: HUB.city })
+    }).catch(function () {});
+  } catch (e) {}
+  HUB.economy = $("ecoChk").checked;
+  HUB.tier = $("tierSel").value;
+  localStorage.setItem("jarvis_economy", HUB.economy ? "1" : "0");
+  localStorage.setItem("jarvis_tier", HUB.tier);
+  if (HUB.tier === "eco") { CONFIG.brain = "local"; setBrainBadge(); }
+  else probeOllama().then(() => setBrainBadge());
+  $("cfg").classList.remove("on");
+  HUB._calTs = 0; HUB._mailTs = 0;
+  refreshCals(true);
+  refreshEmails(true);
+};
+
+async function hydrateFromAntena() {
+  try {
+    const d = await api("/api/mind", { timeout: 6000 });
+    const mind = (d && d.mind) || {};
+    if ((!MIND.episodes || !MIND.episodes.length) && Array.isArray(mind.episodes) && mind.episodes.length)
+      MIND.episodes = mind.episodes.slice(-80);
+    if ((!history || !history.length) && Array.isArray(mind.history) && mind.history.length)
+      history = mind.history.slice(-24);
+  } catch (e) {}
+  try {
+    const d = await api("/api/config", { timeout: 6000 });
+    const c = (d && d.config) || {};
+    if (Array.isArray(c.cals) && c.cals.some(function (x) { return x.url; }) && !CALS.some(function (x) { return x.url; })) {
+      CALS = c.cals;
+      try { lsSet("jarvis_calendars", CALS); } catch (e) {}
+    }
+  } catch (e) {}
+}
+function bootHub() {
+  pingAntena();
+  hydrateFromAntena().then(function () { paintMind(); }).catch(function () {});
+  refreshCals(false);
+  refreshEmails(false);
+  refreshNews(false);
+  if (countdownT) clearInterval(countdownT);
+  countdownT = setInterval(() => {
+    document.querySelectorAll("[data-cd]").forEach(el => {
+      const t = +el.getAttribute("data-cd");
+      el.textContent = "próximo · " + leftTime(new Date(t));
+    });
+  }, 30000);
+  setInterval(() => { refreshCals(true); }, 10 * 60 * 1000);
+  setInterval(() => { refreshEmails(true); }, HUB.mailMs);
+  setInterval(() => { refreshNews(false); }, HUB.newsMs);
+}
+
+loadHubCfg();
+loadNotes();
+loadMind();
+setTimeout(() => {
+  $("boot").classList.add("out");
+  $("gate").classList.remove("out");
+}, 2200);
+if (/[?&]app=1/.test(location.search)) {
+  document.addEventListener("pointerdown", function bootApp() {
+    document.removeEventListener("pointerdown", bootApp);
+    try {
+      if ($("app") && !$("app").classList.contains("on") && $("go")) $("go").click();
+    } catch (e) {}
+  }, true);
+}
+</script>
+<script id="face-layer">
+(function () {
+  function el(t, a, c) {
+    const n = document.createElement(t);
+    if (a) Object.keys(a).forEach(k => n.setAttribute(k, a[k]));
+    if (c) n.innerHTML = c;
+    return n;
+  }
+  const root = el("div", { id: "faceMode", "data-s": "idle", class: "cfg-on" });
+  root.innerHTML =
+    '<div id="faceStage"><img id="faceRealm" alt=""><canvas id="faceGlobo"></canvas><div id="faceOrb" title="Ouvir"><img id="faceKnight" alt=""></div></div>' +
+    '<div id="faceShell">' +
+    '<aside id="faceSide">' +
+    '<div id="faceSearch"><input id="faceFind" placeholder="Buscar" autocomplete="off"></div>' +
+    '<div id="faceHist"></div>' +
+    '<div id="faceSideFoot"><img src="/fenix-icon.png" alt=""><span>Gustavo</span></div></aside>' +
+    '<section id="faceMain">' +
+    '<div id="faceHead">' +
+    '<div id="faceBrand"><button type="button" class="plus" id="faceNew" title="Nova">+</button><img src="/fenix-icon.png" alt=""><b id="faceTitle">Fenix</b><span id="faceStatus">online</span></div>' +
+    '<div id="faceHudTL" hidden>' +
+    '<div><span class="k">STATE</span><span id="faceState">ONLINE</span></div>' +
+    '<div><span class="k">AUDIO</span><span class="abar"><i id="faceAudio"></i></span></div>' +
+    '<div><span class="k">PWR</span><span id="facePower">55%</span></div>' +
+    '<div><span class="k">UP</span><span id="faceUp">00:00</span></div></div>' +
+    '<nav id="faceNav">' +
+    '<button type="button" data-go="agenda">Agenda</button>' +
+    '<button type="button" data-go="mail">E-mails</button>' +
+    '<button type="button" data-go="news">Notícias</button>' +
+    '<button type="button" data-go="digest">Digest</button>' +
+    '<button type="button" data-go="agentes">Agentes</button>' +
+    '<button type="button" data-go="brain">Cérebro</button>' +
+    '<button type="button" data-go="code">Código</button>' +
+    '<button type="button" data-go="vault">Cofre</button></nav>' +
+    '<button type="button" id="faceTalk">PAUSAR</button>' +
+    '<button type="button" id="faceGearBtn" title="Configuração">⚙</button>' +
+    '<div id="faceClock" hidden><b id="faceTime">--:--:--</b><span id="faceDate"></span></div></div>' +
+    '<div id="faceAlerts" hidden></div>' +
+    '<div id="faceThread"><div class="emptyChat">À sua espera, senhor.</div></div>' +
+    '<div id="faceDock"><button type="button" id="facePlus" title="Anexar">+</button>' +
+    '<input id="faceCmd" placeholder="Mensagem para Fenix" autocomplete="off">' +
+    '<button type="button" id="faceMic" title="Ouvir" aria-label="Ouvir"></button></div></section>' +
+    '<aside id="faceCfg">' +
+    '<div class="cfgTop">Configuração <button type="button" id="faceCfgX">×</button></div>' +
+    '<div class="cfgAv"><img src="/fenix-icon.png" alt=""></div>' +
+    '<label>Nome<input id="faceCfgName" spellcheck="false"></label>' +
+    '<label>Rótulo<input id="faceCfgRole" spellcheck="false"></label>' +
+    '<label>Descrição<textarea id="faceCfgBio"></textarea></label>' +
+    '<label class="tog">Notificações<span>Avisos no topo quando algo pede atenção</span><input id="faceCfgNote" type="checkbox" checked></label>' +
+    '<div id="faceHud">' +
+    '<div class="fhud"><h4>MEMÓRIA</h4><div id="faceVit"></div></div>' +
+    '<div class="fhud"><h4>PENSAMENTO</h4><div id="faceSt"></div></div>' +
+    '<div class="fhud"><h4>ANÁLISE</h4><div id="faceLogs"></div></div>' +
+    '<div class="fhud"><h4>CÓDIGO</h4><div id="faceFeed"></div></div></div></aside></div>' +
+    '<div id="faceLeg"></div><aside id="faceRail" hidden><h4>CRÔNICA</h4></aside>' +
+    '<div id="faceVault"><div class="fsHead"><h3>COFRE</h3><div class="fsActs"><button type="button" id="vaultX">FECHAR</button></div></div>' +
+    '<div id="vaultPath"></div><div class="vaultActs">' +
+    '<button type="button" id="vaultUp">VOLTAR</button>' +
+    '<button type="button" id="vaultMk">NOVA PASTA</button>' +
+    '<label class="vaultAdd">ARQUIVO<input id="vaultFile" type="file" multiple></label></div>' +
+    '<div id="vaultDrop">solte o arquivo e toque ANALISAR</div><ul id="vaultList"></ul></div>' +
+    '<div id="faceTick"></div><div id="faceRuler"></div><canvas id="faceMap"></canvas>' +
+    '<div id="faceSheet" hidden><div class="fsHead"><h3>RADAR</h3><div class="fsActs"><button type="button" id="faceCopy">COPIAR</button><button type="button" id="faceSheetX">FECHAR</button></div></div><div id="faceSheetBody"></div></div>' +
+    '<div id="faceAgents"><div><div class="fsHead"><h3>AGENTES</h3><button type="button" id="agClose">Fechar</button></div><div id="agSvgHost"></div></div>' +
+    '<div class="agSide"><div class="agResumo" id="agResumo"></div><div class="agCard" id="agCard"><p>Toque num agente.</p></div>' +
+    '<button type="button" id="agRun">▶ rodar agora</button><ul class="agList" id="agList"></ul></div></div>';
+  document.body.appendChild(root);
+  (function () {
+    const img = document.getElementById("faceKnight");
+    const realm = document.getElementById("faceRealm");
+    const base = (typeof ANTENA === "string" && ANTENA) ? ANTENA : "http://127.0.0.1:4250";
+    if (img) img.src = base + "/fenix-knight.png?v=3";
+    if (realm) realm.src = base + "/fenix-realm.png";
+  })();
+
+  const gear = document.getElementById("gear");
+  if (gear && !document.getElementById("faceBtn")) {
+    const b = el("button", { id: "faceBtn", class: "btn", type: "button", title: "FACE" });
+    b.innerHTML = '<img src="/fenix-icon.png" alt="Fenix">';
+    b.onclick = function () { window.faceModeToggle(); };
+    gear.parentNode.insertBefore(b, gear);
+  }
+
+  const labels = { idle: "ONLINE", listening: "LISTENING", thinking: "THINKING", speaking: "SPEAKING", paused: "PAUSED" };
+  let raf = 0, iv1 = 0, iv2 = 0, pts = [], corePts = [], rot = 0, rotX = 0.18, bootTs = Date.now();
+  const logs = [];
+
+  function log(msg) {
+    const t = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    logs.unshift(t + "  " + msg);
+    if (logs.length > 8) logs.pop();
+    try { if (typeof window.thinkTrace === "function") window.thinkTrace(msg); } catch (e) {}
+  }
+
+  function fib(n, rad) {
+    const a = [], g = Math.PI * (3 - Math.sqrt(5)), r = rad || 1;
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 2;
+      const rr = Math.sqrt(Math.max(0, 1 - y * y)) * r;
+      const th = g * i;
+      a.push({ x: Math.cos(th) * rr, y: y * r, z: Math.sin(th) * rr });
+    }
+    return a;
+  }
+  function ball(n, rMin, rMax, seed) {
+    const a = [];
+    let s = seed || 1;
+    function rnd() { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }
+    for (let i = 0; i < n; i++) {
+      const y = rnd() * 2 - 1;
+      const th = rnd() * Math.PI * 2;
+      const rr = Math.sqrt(Math.max(0, 1 - y * y));
+      const rad = rMin + (rMax - rMin) * Math.pow(rnd(), 1.7);
+      a.push({ x: Math.cos(th) * rr * rad, y: y * rad, z: Math.sin(th) * rr * rad });
+    }
+    return a;
+  }
+  pts = fib(420, 1);
+  corePts = ball(900, 0, 0.55, 7).concat(ball(400, 0, 0.22, 13));
+
+  function audioLv() {
+    try {
+      if (typeof window._jarvisAudioLevel === "function") return window._jarvisAudioLevel();
+      if (typeof window._micLevel === "function") return window._micLevel();
+    } catch (e) {}
+    return 0.35 + Math.sin(Date.now() / 700) * 0.08;
+  }
+
+  let cw = 0, ch = 0, skip = 0;
+  const rings = [
+    { tilt: 0.55, yaw: 0.2, r: 1.02, n: 96 },
+    { tilt: 1.15, yaw: 0.9, r: 1.08, n: 88 },
+    { tilt: -0.7, yaw: 1.6, r: 0.96, n: 80 },
+    { tilt: 0.25, yaw: 2.3, r: 1.14, n: 72 }
+  ];
+  function project(x, y, z, a, b) {
+    const c = Math.cos(a), s = Math.sin(a);
+    const x1 = x * c - z * s, z1 = x * s + z * c;
+    const c2 = Math.cos(b), s2 = Math.sin(b);
+    const y2 = y * c2 - z1 * s2, z2 = y * s2 + z1 * c2;
+    return { x: x1, y: y2, z: z2 };
+  }
+  function drawGlobe() {
+    const c = document.getElementById("faceGlobo");
+    if (!c || !root.classList.contains("on")) { raf = 0; return; }
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const nw = Math.max(320, Math.round(window.innerWidth * dpr));
+    const nh = Math.max(320, Math.round(window.innerHeight * dpr));
+    if (nw !== cw || nh !== ch) {
+      c.width = cw = nw;
+      c.height = ch = nh;
+      c.style.width = window.innerWidth + "px";
+      c.style.height = window.innerHeight + "px";
+    }
+    const ctx = c.getContext("2d", { alpha: true });
+    if (!ctx) { raf = 0; return; }
+    ctx.clearRect(0, 0, cw, ch);
+    const state = root.getAttribute("data-s") || "idle";
+    const amp = audioLv();
+    const speed = state === "speaking" ? 0.01 : state === "listening" ? 0.007 : 0.0035;
+    rot += speed + amp * 0.004;
+    rotX = 0.22 + Math.sin(rot * 0.35) * 0.08;
+    const R = Math.min(cw, ch) * 0.34;
+    const cx = cw / 2, cy = ch / 2;
+    ctx.globalCompositeOperation = "lighter";
+    function dot(p, cull, bright, grow) {
+      const q = project(p.x, p.y, p.z, rot, rotX);
+      if (cull && q.z < -0.25) return;
+      const d = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+      const a = Math.min(0.9, (0.1 + (1 - d) * 0.55 + (q.z + 1) * 0.1) * bright);
+      const s = grow + (1 - d) * 2.2;
+      ctx.fillStyle = "rgba(255,170,70," + a + ")";
+      ctx.fillRect(cx + q.x * R * 1.55 - s / 2, cy + q.y * R * 1.55 - s / 2, s, s);
+    }
+    for (let i = 0; i < pts.length; i++) dot(pts[i], true, 0.7, 1.2);
+    for (let i = 0; i < corePts.length; i++) dot(corePts[i], false, 0.85, 1.4);
+    rings.forEach(function (ring, ri) {
+      const yaw = ring.yaw + rot * (ri % 2 ? -0.35 : 0.28);
+      for (let i = 0; i < ring.n; i++) {
+        const th = (i / ring.n) * Math.PI * 2;
+        const p = {
+          x: Math.cos(th) * ring.r,
+          y: Math.sin(th) * Math.sin(ring.tilt) * ring.r,
+          z: Math.sin(th) * Math.cos(ring.tilt) * ring.r
+        };
+        const q = project(p.x, p.y, p.z, yaw, rotX * 0.6);
+        if (q.z < -0.2) continue;
+        ctx.fillStyle = "rgba(255,168,64," + (0.22 + (q.z + 1) * 0.3) + ")";
+        ctx.fillRect(cx + q.x * R * 1.55, cy + q.y * R * 1.55, 1.5, 1.5);
+      }
+    });
+    ctx.globalCompositeOperation = "source-over";
+    raf = requestAnimationFrame(drawGlobe);
+  }
+
+  function drawMap() {
+    const c = document.getElementById("faceMap");
+    if (!c) return;
+    const w = c.width = 336, h = c.height = 184;
+    const ctx = c.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(255,255,255,0.32)";
+    ctx.lineWidth = 1;
+    for (let y = 18; y < h; y += 22) {
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 8) {
+        const yy = y + Math.sin(x * 0.04 + y * 0.08) * 7 + Math.sin(x * 0.12) * 3;
+        if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#fff";
+    [[40, 50], [90, 80], [150, 40], [210, 90], [280, 55], [120, 130], [250, 140]].forEach(function (p) {
+      ctx.fillRect(p[0], p[1], 3, 3);
+    });
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.strokeRect(0.5, 0.5, w - 1, h - 1);
+  }
+
+  function tickClock() {
+    if (!root.classList.contains("on")) return;
+    const d = new Date();
+    const tb = document.getElementById("faceTime");
+    const db = document.getElementById("faceDate");
+    if (tb) tb.textContent = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    if (db) {
+      const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+      const mons = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+      db.textContent = days[d.getDay()] + " " + String(d.getDate()).padStart(2, "0") + " " + mons[d.getMonth()] + " " + d.getFullYear();
+    }
+    const bar = document.getElementById("faceAudio");
+    if (bar) bar.style.width = Math.round(Math.max(8, Math.min(100, audioLv() * 100))) + "%";
+    const up = document.getElementById("faceUp");
+    if (up) {
+      const s = Math.floor((Date.now() - bootTs) / 1000);
+      up.textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+    }
+    const pw = document.getElementById("facePower");
+    if (pw) {
+      let heap = 55;
+      try { if (performance.memory) heap = Math.min(92, 40 + Math.round(performance.memory.usedJSHeapSize / 1048576 / 4)); } catch (e) {}
+      pw.textContent = heap + "%";
+    }
+  }
+
+  function syncState() {
+    if (!root.classList.contains("on")) return;
+    let s = "idle";
+    try {
+      const orb = document.getElementById("orb");
+      if (orb && orb.dataset.state) s = orb.dataset.state;
+    } catch (e) {}
+    root.setAttribute("data-s", s);
+    const st = document.getElementById("faceState");
+    if (st) st.textContent = labels[s] || "ONLINE";
+    const fs = document.getElementById("faceStatus");
+    if (fs) fs.textContent = ({ idle: "online", listening: "ouvindo", thinking: "pensando", speaking: "falando", paused: "pausada" })[s] || s;
+    try { if (typeof syncTalkUi === "function") syncTalkUi(); } catch (e) {}
+    try {
+      const him = document.getElementById("him");
+      const leg = document.getElementById("faceLeg");
+      if (him && leg) {
+        const t = (him.textContent || "").replace(/^Fenix:\s*/i, "").trim();
+        if (t) { leg.textContent = t; leg.style.display = ""; }
+      }
+    } catch (e) {}
+  }
+
+  function vitals() {
+    if (!root.classList.contains("on")) return;
+    try { if (typeof window.paintMind === "function") window.paintMind(); } catch (e) {}
+  }
+  function status() {}
+  function feeds() {}
+
+  function ticker() {
+    if (!root.classList.contains("on")) return;
+    const el = document.getElementById("faceTick");
+    if (!el) return;
+    const t = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    let ok = false;
+    try { ok = typeof antenaOk !== "undefined" && antenaOk; } catch (e) {}
+    let intent = "chat";
+    try { if (window.MIND && MIND.intent) intent = MIND.intent; } catch (e) {}
+    el.textContent = t + "  " + (ok ? "LINK ONLINE" : "LINK STANDBY") + "  ·  " + String(intent).toUpperCase();
+  }
+
+  function tickFace() {
+    tickClock(); syncState(); vitals(); status(); feeds(); ticker();
+  }
+
+  function startFaceLoops() {
+    stopFaceLoops();
+    tickFace();
+    drawMap();
+    iv1 = setInterval(function () {
+      if (!root.classList.contains("on")) return;
+      tickClock(); syncState(); ticker();
+    }, 1000);
+    iv2 = setInterval(function () {
+      if (!root.classList.contains("on")) return;
+      status(); feeds();
+    }, 15000);
+  }
+  function stopFaceLoops() {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    clearInterval(iv1); clearInterval(iv2); iv1 = 0; iv2 = 0;
+  }
+
+  function fillFaceCfg() {
+    try {
+      const n = document.getElementById("faceCfgName");
+      const r = document.getElementById("faceCfgRole");
+      const b = document.getElementById("faceCfgBio");
+      const t = document.getElementById("faceTitle");
+      const c = document.getElementById("faceCmd");
+      if (n && !n.value) n.value = CONFIG.name || "Fenix";
+      if (r && !r.value) r.value = CONFIG.persona || "";
+      if (b && !b.value) b.value = (CONFIG.name || "Fenix") + " — assistente pessoal do Gustavo. Trata o senhor de " + (CONFIG.address || "senhor") + ".";
+      if (t) t.textContent = (n && n.value) || CONFIG.name || "Fenix";
+      if (c) c.placeholder = "Mensagem para " + ((n && n.value) || CONFIG.name || "Fenix");
+    } catch (e) {}
+  }
+  window.faceModeToggle = function () {
+    root.classList.add("on");
+    root.classList.add("cfg-on");
+    startFaceLoops();
+    fillFaceCfg();
+    if (!logs.length) { log("núcleo sincronizado"); log("varredura ok"); }
+    try { if (typeof window.paintMind === "function") window.paintMind(); } catch (e) {}
+  };
+  root.addEventListener("dragover", function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.types || e.dataTransfer.types.indexOf("Files") < 0) return;
+    e.preventDefault();
+  });
+  root.addEventListener("drop", function (e) {
+    if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+    if (e.target.closest("#faceVault")) return;
+    const f = e.dataTransfer.files[0];
+    if (!f || (!/^image\//.test(f.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(f.name))) return;
+    e.preventDefault();
+    if (typeof window.uploadVaultFiles === "function") window.uploadVaultFiles([f], true);
+  });
+
+  const talkBtn = document.getElementById("faceTalk");
+  if (talkBtn) talkBtn.onclick = function () {
+    if (typeof window.toggleTalk === "function") window.toggleTalk();
+  };
+
+  root.querySelector("#faceOrb").onclick = function () {
+    try {
+      if (typeof window.toggleListening === "function") { window.toggleListening(); return; }
+      const orb = document.getElementById("orb");
+      if (orb) orb.click();
+    } catch (e) {}
+  };
+
+  try {
+    if (!window._orbSetters) window._orbSetters = [];
+    if (Array.isArray(window._orbSetters)) {
+      window._orbSetters.push(function (s) {
+        try { root.setAttribute("data-s", s || "idle"); } catch (e) {}
+      });
+    }
+  } catch (e) {}
+
+  ["_setTranscript", "_jarvisFeedPush"].forEach(function (k) {
+    try {
+      const o = window[k];
+      window[k] = function () {
+        try { if (typeof o === "function") o.apply(this, arguments); } catch (e) {}
+        try {
+          const t = arguments[0];
+          const leg = document.getElementById("faceLeg");
+          if (leg && t) { leg.textContent = String(t); leg.style.display = ""; }
+        } catch (e) {}
+      };
+    } catch (e) {}
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      try { const c = document.getElementById("cfg"); if (c) c.classList.remove("on"); } catch (err) {}
+    }
+  });
+
+  try {
+    if (/[?&]face=1/.test(location.search)) {
+      setTimeout(function () { window.faceModeToggle(true); }, 400);
+    }
+  } catch (e) {}
+
+  try {
+    const app = document.getElementById("app");
+    if (app) {
+      const mo = new MutationObserver(function () {
+        if (app.classList.contains("on")) window.faceModeToggle(true);
+      });
+      mo.observe(app, { attributes: true, attributeFilter: ["class"] });
+    }
+  } catch (e) {}
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function hiCode(src) {
+    return esc(src)
+      .replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, '<span class="cmt">$1</span>')
+      .replace(/(&quot;[^&]*(?:&amp;[^&]*)*&quot;|&#39;[^&]*&#39;|`[^`]*`)/g, '<span class="st">$1</span>')
+      .replace(/\b(const|let|var|function|return|if|else|for|while|async|await|class|new|try|catch|finally|import|from|export|def|and|or|not|in|of|true|false|null|undefined)\b/g, '<span class="kw">$1</span>')
+      .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="num">$1</span>');
+  }
+  window.showFaceCode = function (title, code) {
+    const sheet = document.getElementById("faceSheet");
+    const body = document.getElementById("faceSheetBody");
+    const head = sheet && sheet.querySelector("h3");
+    if (!sheet || !body) return;
+    const src = String(code || "");
+    const lines = src.split(/\n/);
+    const lang = String(title || "código").toUpperCase();
+    if (head) head.textContent = lang + " · " + lines.length + " LINHAS";
+    body.innerHTML = '<div class="studio"><div class="ln">' +
+      lines.map(function (_, i) { return (i + 1); }).join("<br>") +
+      "</div><pre>" + hiCode(src) + "</pre></div>";
+    sheet.hidden = false;
+    try { MIND.code.preview = src; if (title) MIND.code.lang = String(title); } catch (e) {}
+  };
+  window.showFaceAgenda = function () {
+    const sheet = document.getElementById("faceSheet");
+    const body = document.getElementById("faceSheetBody");
+    const head = sheet && sheet.querySelector("h3");
+    if (!sheet || !body) return;
+    if (head) head.textContent = "AGENDA";
+    const src = document.getElementById("agendaBox");
+    body.innerHTML = (src && src.innerHTML)
+      ? src.innerHTML
+      : "<p>Sem agenda. Em ⚙ cole o endereço secreto iCal.</p>";
+    sheet.hidden = false;
+    const btn = body.querySelector("#relCal");
+    if (btn) btn.onclick = function () {
+      Promise.resolve(refreshCals(true)).then(function () { window.showFaceAgenda(); });
+    };
+  };
+  window.showFaceMail = function () {
+    const sheet = document.getElementById("faceSheet");
+    const body = document.getElementById("faceSheetBody");
+    const head = sheet && sheet.querySelector("h3");
+    if (!sheet || !body) return;
+    if (head) head.textContent = "E-MAILS";
+    const src = document.getElementById("mailBox");
+    body.innerHTML = (src && src.innerHTML)
+      ? src.innerHTML
+      : "<p>Sem e-mails. Em ⚙ cole o e-mail e a senha de app.</p>";
+    sheet.hidden = false;
+    const btn = body.querySelector("#relMail");
+    if (btn) btn.onclick = function () {
+      Promise.resolve(refreshEmails(true)).then(function () { window.showFaceMail(); });
+    };
+    const t = body.querySelector("#togR");
+    if (t) t.onclick = function () {
+      const ru = body.querySelector("#ruBox");
+      if (ru) ru.classList.toggle("hid");
+    };
+  };
+  window.showFaceNews = function (open) {
+    const sheet = document.getElementById("faceSheet");
+    const body = document.getElementById("faceSheetBody");
+    const head = sheet && sheet.querySelector("h3");
+    if (head) head.textContent = "RADAR";
+    if (!sheet || !body) return;
+    let html = "";
+    try {
+      const data = (typeof NEWS !== "undefined" && NEWS) ? NEWS : {};
+      const keys = Object.keys(data);
+      const has = keys.some(k => (data[k] || []).length);
+      if (!has) html = "<p>Sem manchetes. Deixe a antena ligada: node server.js — depois toque em Notícias de novo.</p>";
+      else keys.forEach(k => {
+        html += "<h4>" + esc(k).toUpperCase() + "</h4>";
+        (data[k] || []).forEach(n => {
+          const href = n.link || "#";
+          html += '<a href="' + esc(href) + '" target="_blank" rel="noopener">' + esc(n.title || "sem título") +
+            (n.fonte ? '<div style="color:var(--txt3);font-size:11px;margin-top:4px">' + esc(n.fonte) + "</div>" : "") + "</a>";
+        });
+      });
+    } catch (e) { html = "<p>Falha ao montar o radar.</p>"; }
+    body.innerHTML = html;
+    if (open) sheet.hidden = false;
+  };
+  const sx = document.getElementById("faceSheetX");
+  if (sx) sx.onclick = function () { document.getElementById("faceSheet").hidden = true; };
+  function copyCode() {
+    const txt = (window.MIND && MIND.code && MIND.code.preview) ? MIND.code.preview : "";
+    if (!txt) return;
+    try { navigator.clipboard.writeText(txt); } catch (e) {}
+    log("código copiado");
+  }
+  const cp = document.getElementById("faceCopy");
+  if (cp) cp.onclick = copyCode;
+  root.addEventListener("click", function (e) {
+    if (e.target.closest("#faceCopyMini")) { copyCode(); return; }
+    if (e.target.closest("#faceOpenCode") || e.target.closest("#faceFeed pre")) {
+      try {
+        if (MIND.code && MIND.code.preview) window.showFaceCode(MIND.code.lang, MIND.code.preview);
+      } catch (err) {}
+    }
+    const h = e.target.closest("#faceHist .hist");
+    if (h && h.getAttribute("data-q")) {
+      const q = h.getAttribute("data-q");
+      const ep = (window.MIND && MIND.episodes || []).find(function (x) { return x.q === q; });
+      const thread = document.getElementById("faceThread");
+      Array.prototype.forEach.call(document.querySelectorAll("#faceHist .hist"), function (n) { n.classList.remove("on"); });
+      h.classList.add("on");
+      if (thread && ep) {
+        thread.dataset.lock = "1";
+        thread.innerHTML = '<div class="bub u">' + esc(ep.q || "") + '</div><div class="bub a">' + esc(ep.a || "") + "</div>";
+        thread.scrollTop = thread.scrollHeight;
+      }
+    }
+  });
+  (function vaultUi() {
+    const box = document.getElementById("faceVault");
+    const list = document.getElementById("vaultList");
+    const pathEl = document.getElementById("vaultPath");
+    const drop = document.getElementById("vaultDrop");
+    if (!box || !list) return;
+    let dir = "";
+    const base = (typeof ANTENA === "string" && ANTENA) ? ANTENA : "http://127.0.0.1:4250";
+    function join(a, b) { return a ? a + "/" + b : b; }
+    async function refresh() {
+      try {
+        const r = await fetch(base + "/api/vault?dir=" + encodeURIComponent(dir));
+        const d = await r.json();
+        dir = d.dir || "";
+        if (pathEl) pathEl.textContent = "cofre/" + (dir || "");
+        list.innerHTML = (d.items || []).map(function (it) {
+          return '<li data-n="' + esc(it.name) + '" data-f="' + (it.folder ? "1" : "0") + '"><b>' +
+            esc(it.folder ? "📁 " : "📄 ") + esc(it.name) + "</b><span>" +
+            (it.folder ? "pasta" : Math.max(1, Math.round((it.size || 0) / 1024)) + " kb") +
+            (it.folder ? "" : ' <button type="button" data-act="an">ANALISAR</button>') + "</span></li>";
+        }).join("") || "<li>vazio</li>";
+      } catch (e) { list.innerHTML = "<li>antena offline — abra pelo Fenix.bat</li>"; }
+    }
+    async function uploadFiles(files, analyze) {
+      let last = "";
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const data = await new Promise(function (ok, no) {
+          const rd = new FileReader();
+          rd.onload = function () { ok(rd.result); };
+          rd.onerror = no;
+          rd.readAsDataURL(f);
+        });
+        await fetch(base + "/api/vault/upload", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ dir: dir, name: f.name, data: data })
+        });
+        last = join(dir, f.name);
+      }
+      refresh();
+      if (analyze && last && typeof window.analyzeVaultPath === "function") {
+        box.classList.remove("on");
+        window.analyzeVaultPath(last);
+      }
+      return last;
+    }
+    window.uploadVaultFiles = uploadFiles;
+    window.openVault = function () { box.classList.add("on"); refresh(); };
+    const vx = document.getElementById("vaultX");
+    if (vx) vx.onclick = function () { box.classList.remove("on"); };
+    const up = document.getElementById("vaultUp");
+    if (up) up.onclick = function () {
+      const parts = dir.split("/").filter(Boolean);
+      parts.pop();
+      dir = parts.join("/");
+      refresh();
+    };
+    const mk = document.getElementById("vaultMk");
+    if (mk) mk.onclick = async function () {
+      const name = window.prompt("Nome da pasta");
+      if (!name) return;
+      await fetch(base + "/api/vault/mkdir", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dir: dir, name: name })
+      });
+      refresh();
+    };
+    const inp = document.getElementById("vaultFile");
+    if (inp) inp.onchange = function () { if (inp.files && inp.files.length) uploadFiles(inp.files); };
+    list.onclick = function (e) {
+      const li = e.target.closest("li");
+      if (!li || !li.getAttribute("data-n")) return;
+      const name = li.getAttribute("data-n");
+      if (li.getAttribute("data-f") === "1") { dir = join(dir, name); refresh(); return; }
+      const rel = join(dir, name);
+      if (e.target.getAttribute("data-act") === "an") {
+        box.classList.remove("on");
+        if (typeof window.analyzeVaultPath === "function") window.analyzeVaultPath(rel);
+        return;
+      }
+      window.open(base + "/api/vault/file?path=" + encodeURIComponent(rel));
+    };
+    if (drop) {
+      drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("hot"); });
+      drop.addEventListener("dragleave", function () { drop.classList.remove("hot"); });
+      drop.addEventListener("drop", function (e) {
+        e.preventDefault();
+        drop.classList.remove("hot");
+        if (e.dataTransfer && e.dataTransfer.files) uploadFiles(e.dataTransfer.files);
+      });
+    }
+  })();
+
+  function stay(fn, msg) {
+    window.faceModeToggle();
+    try {
+      const r = typeof fn === "function" ? fn() : null;
+      if (r && typeof r.then === "function") r.catch(function () {});
+    } catch (e) {}
+    if (msg) log(msg);
+  }
+  root.querySelectorAll("#faceNav [data-go]").forEach(function (btn) {
+    btn.onclick = function () {
+      const g = btn.getAttribute("data-go");
+      if (g === "agenda") {
+        (async function () {
+          log("agenda");
+          try { if (typeof refreshCals === "function") await refreshCals(true); } catch (e) {}
+          if (typeof window.showFaceAgenda === "function") window.showFaceAgenda();
+          try { if (typeof speakToday === "function") speakToday(); } catch (e) {}
+        })();
+      }
+      else if (g === "mail") {
+        (async function () {
+          log("e-mails");
+          try { if (typeof refreshEmails === "function") await refreshEmails(true); } catch (e) {}
+          if (typeof window.showFaceMail === "function") window.showFaceMail();
+          try { if (typeof speakMails === "function") speakMails(); } catch (e) {}
+        })();
+      }
+      else if (g === "news") stay(async function () {
+        if (typeof refreshNews === "function") await refreshNews(true);
+        if (typeof window.showFaceNews === "function") window.showFaceNews(true);
+        if (typeof speakNews === "function") speakNews(null);
+      }, "radar");
+      else if (g === "digest") stay(function () { if (typeof runDigest === "function") runDigest(false); }, "digest");
+      else if (g === "agentes") stay(function () { if (typeof window.openAgents === "function") window.openAgents(); }, "agentes");
+      else if (g === "code") {
+        try {
+          if (window.MIND && MIND.code && MIND.code.preview) window.showFaceCode(MIND.code.lang, MIND.code.preview);
+          else log("sem código ainda");
+        } catch (e) {}
+      }
+      else if (g === "vault") {
+        try { if (typeof window.openVault === "function") window.openVault(); } catch (e) {}
+      }
+      else if (g === "brain") {
+        root.classList.add("cfg-on");
+        try { document.getElementById("cfg").classList.add("on"); } catch (e) {}
+      }
+      else stay(null, "núcleo");
+    };
+  });
+  const fg = document.getElementById("faceGearBtn");
+  if (fg) fg.onclick = function () {
+    root.classList.toggle("cfg-on");
+  };
+  const cfgX = document.getElementById("faceCfgX");
+  if (cfgX) cfgX.onclick = function () { root.classList.remove("cfg-on"); };
+  const mic = document.getElementById("faceMic");
+  if (mic) mic.onclick = function () {
+    try {
+      if (typeof window.toggleListening === "function") window.toggleListening();
+      else {
+        const orb = document.getElementById("orb");
+        if (orb) orb.click();
+      }
+    } catch (e) {}
+  };
+  const plus = document.getElementById("facePlus");
+  if (plus) plus.onclick = function () {
+    try { if (typeof window.openVault === "function") window.openVault(); } catch (e) {}
+  };
+  const neu = document.getElementById("faceNew");
+  if (neu) neu.onclick = function () {
+    if (typeof window.startNewChat === "function") window.startNewChat();
+  };
+  const find = document.getElementById("faceFind");
+  if (find) find.addEventListener("input", function () {
+    try { if (typeof window.paintMind === "function") window.paintMind(); } catch (e) {}
+  });
+  ["faceCfgName", "faceCfgRole", "faceCfgBio"].forEach(function (id) {
+    const n = document.getElementById(id);
+    if (!n) return;
+    n.addEventListener("change", function () {
+      if (id === "faceCfgName" && n.value.trim()) {
+        CONFIG.name = n.value.trim();
+        fillFaceCfg();
+      }
+      if (id === "faceCfgRole") CONFIG.persona = n.value.trim();
+    });
+  });
+  const note = document.getElementById("faceCfgNote");
+  if (note) note.onchange = function () {
+    const box = document.getElementById("faceAlerts");
+    if (box) box.style.display = note.checked ? "" : "none";
+  };
+  const cmd = document.getElementById("faceCmd");
+  if (cmd) cmd.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    const v = cmd.value.trim();
+    if (!v) return;
+    cmd.value = "";
+    const thread = document.getElementById("faceThread");
+    if (thread) thread.dataset.lock = "";
+    try {
+      if (typeof runCommand === "function") runCommand(v);
+    } catch (err) {}
+  });
+
+  (function agentsPanel() {
+    const host = document.getElementById("agSvgHost");
+    const box = document.getElementById("faceAgents");
+    const card = document.getElementById("agCard");
+    const list = document.getElementById("agList");
+    const resumo = document.getElementById("agResumo");
+    const runBtn = document.getElementById("agRun");
+    const close = document.getElementById("agClose");
+    if (!host || !box) return;
+    let snap = null, fetchedAt = 0, sel = null, raf = 0, poll = 0, pulses = [], flash = 0;
+    const LAB = { ok: "em dia", stale: "atrasado", error: "erro", idle: "nunca rodou", off: "desligado" };
+
+    function tok(name, fb) {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fb;
+    }
+    function color(st) {
+      if (st === "ok") return tok("--green", "#34d399");
+      if (st === "stale") return tok("--yellow", "#fbbf24");
+      if (st === "error") return tok("--red", "#f43f5e");
+      return tok("--txt3", "#7a746c");
+    }
+    function ago(min) {
+      if (min == null) return "nunca";
+      if (min < 1) return "agora mesmo";
+      if (min < 60) return "há " + Math.round(min) + " min";
+      const h = min / 60;
+      if (h < 24) return "há " + h.toFixed(1).replace(".", ",") + " h";
+      return "há " + Math.round(h / 24) + " d";
+    }
+    function inMin(min) {
+      if (min == null) return "—";
+      if (min < 1) return "agora";
+      if (min < 60) return "em " + Math.round(min) + " min";
+      return "em " + (min / 60).toFixed(1).replace(".", ",") + " h";
+    }
+    function cad(m) {
+      if (m >= 1440) return "1× por dia";
+      return m + " em " + m + " min";
+    }
+    function liveAge(a) {
+      if (a.age_min == null) return null;
+      return a.age_min + (Date.now() - fetchedAt) / 60000;
+    }
+    function livePhase(a) {
+      const age = liveAge(a);
+      if (age == null || !a.every_min) return null;
+      return Math.min(1, age / a.every_min);
+    }
+    function hexPts(cx, cy, r) {
+      const o = [];
+      for (let i = 0; i < 6; i++) {
+        const ang = Math.PI / 6 + i * Math.PI / 3;
+        o.push((cx + r * Math.cos(ang)).toFixed(1) + "," + (cy + r * Math.sin(ang)).toFixed(1));
+      }
+      return o.join(" ");
+    }
+    function visible() {
+      return box.classList.contains("on") && document.visibilityState === "visible";
+    }
+
+    function draw() {
+      if (!snap) return;
+      const W = 640, H = 420, cx = 320, cy = 200;
+      const agents = snap.agents;
+      const n = Math.max(agents.length, 1);
+      const rx = 210, ry = 130;
+      const mobile = window.innerWidth < 720;
+      const fs = mobile ? 13 : 11;
+      let s = '<svg viewBox="0 0 640 420" xmlns="http://www.w3.org/2000/svg">';
+      s += '<g class="core">';
+      s += '<polygon points="' + hexPts(cx, cy, 28) + '" fill="none" stroke="' + tok("--primary", "#ff6a1a") + '" stroke-width="1.4"/>';
+      s += '<polygon class="spin" points="' + hexPts(cx, cy, 38) + '" fill="none" stroke="' + tok("--accent", "#fb7185") + '" stroke-width="0.8" opacity="0.5"/>';
+      s += '<polygon class="spinr" points="' + hexPts(cx, cy, 48) + '" fill="none" stroke="' + tok("--primary", "#ff6a1a") + '" stroke-width="0.6" opacity="0.35"/>';
+      s += '<circle id="agFlash" cx="' + cx + '" cy="' + cy + '" r="8" fill="' + tok("--primary", "#ff6a1a") + '" opacity="' + flash + '"/>';
+      s += "</g>";
+      agents.forEach((a, i) => {
+        const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+        const x = cx + rx * Math.cos(ang), y = cy + ry * Math.sin(ang);
+        a._x = x; a._y = y;
+        const col = color(a.state);
+        const ph = livePhase(a);
+        s += '<line x1="' + cx + '" y1="' + cy + '" x2="' + x + '" y2="' + y + '" stroke="' + tok("--border", "#333") + '" stroke-width="1" opacity="0.35"/>';
+        const rArc = 26, cArc = 2 * Math.PI * rArc;
+        s += '<circle cx="' + x + '" cy="' + y + '" r="' + rArc + '" fill="none" stroke="' + col + '" stroke-width="2" opacity="0.18"/>';
+        if (ph != null) {
+          const dash = (ph * cArc).toFixed(1);
+          const pulse = ph >= 0.92 ? ' class="urg"' : "";
+          s += '<circle' + pulse + ' cx="' + x + '" cy="' + y + '" r="' + rArc + '" fill="none" stroke="' + col +
+            '" stroke-width="2.4" stroke-dasharray="' + dash + " " + cArc + '" transform="rotate(-90 ' + x + " " + y + ')"/>';
+        } else {
+          s += '<circle class="spin" cx="' + x + '" cy="' + y + '" r="' + rArc + '" fill="none" stroke="' + col +
+            '" stroke-width="2" stroke-dasharray="12 50"/>';
+        }
+        const err = a.state === "error" ? ' class="agerr"' : "";
+        s += '<g data-ag="' + a.id + '" style="cursor:pointer"' + err + ">";
+        s += "<title>" + a.nome + " · " + LAB[a.state] + " · " + a.faz + " · última " + ago(liveAge(a)) + " · próxima " + inMin(a.next_in_min != null ? Math.max(0, a.every_min - (liveAge(a) || 0)) : null) + "</title>";
+        s += '<polygon points="' + hexPts(x, y, 16) + '" fill="' + col + '" opacity="' + (sel === a.id ? "1" : "0.9") + '"/>';
+        s += '<text x="' + x + '" y="' + (y + 5) + '" text-anchor="middle" font-size="12">' + a.icon + "</text>";
+        s += '<text x="' + x + '" y="' + (y + 36) + '" text-anchor="middle" fill="' + tok("--txt", "#eee") + '" font-size="' + fs + '">' + a.nome + "</text>";
+        if (!mobile) s += '<text class="agsub" x="' + x + '" y="' + (y + 50) + '" text-anchor="middle" fill="' + tok("--txt3", "#888") + '" font-size="10">' + (a.metric || LAB[a.state]) + "</text>";
+        s += "</g>";
+      });
+      pulses.forEach(p => {
+        const a = agents.find(x => x.id === p.id);
+        if (!a) return;
+        const t = p.t * p.t;
+        const x = a._x + (cx - a._x) * t, y = a._y + (cy - a._y) * t;
+        s += '<circle cx="' + x + '" cy="' + y + '" r="2.4" fill="' + tok("--green", "#34d399") + '" opacity="' + (1 - t) + '"/>';
+      });
+      s += "</svg>";
+      host.innerHTML = '<div>' + s + "</div>";
+      host.querySelectorAll("[data-ag]").forEach(el => {
+        el.addEventListener("click", () => select(el.getAttribute("data-ag")));
+      });
+    }
+
+    function select(id) {
+      sel = sel === id ? null : id;
+      renderCard();
+      draw();
+      [].slice.call(list.children).forEach(li => li.classList.toggle("on", li.getAttribute("data-ag") === sel));
+    }
+
+    function renderCard() {
+      const a = snap && snap.agents.find(x => x.id === sel);
+      if (!a) {
+        card.innerHTML = "<p>Toque num agente.</p>";
+        runBtn.classList.remove("show");
+        return;
+      }
+      const age = liveAge(a);
+      card.innerHTML = "<h3>" + a.icon + " " + a.nome + "</h3>" +
+        "<p>" + LAB[a.state] + " · " + a.faz + "</p>" +
+        "<p>Cadência: " + cad(a.every_min) + "</p>" +
+        "<p>Última: " + ago(age) + "</p>" +
+        "<p>Próxima: " + inMin(age == null ? null : Math.max(0, a.every_min - age)) + "</p>" +
+        "<p>" + (a.metric || "") + (a.detail ? " · " + a.detail : "") + "</p>" +
+        "<p>Estado em " + a.arquivo + "</p>";
+      if (a.run && a.run.url) {
+        runBtn.classList.add("show");
+        runBtn.disabled = false;
+        runBtn.textContent = "▶ rodar agora";
+      } else runBtn.classList.remove("show");
+    }
+
+    function renderList() {
+      if (!snap) return;
+      const r = snap.resumo;
+      resumo.textContent = r.ok + " em dia · " + r.atencao + " pedem atenção · " + r.off + " desligados";
+      list.innerHTML = snap.agents.map(a =>
+        '<li data-ag="' + a.id + '" class="' + (sel === a.id ? "on" : "") + '"><i class="agdot ' + a.state + '"></i>' +
+        a.nome + " · " + LAB[a.state] + "</li>"
+      ).join("");
+      list.querySelectorAll("li").forEach(li => {
+        li.onclick = () => select(li.getAttribute("data-ag"));
+      });
+    }
+
+    async function load() {
+      if (!visible()) return;
+      try {
+        const r = await fetch(ANTENA + "/api/agents");
+        if (!r.ok) throw new Error("http");
+        snap = await r.json();
+        fetchedAt = Date.now();
+        renderList();
+        renderCard();
+      } catch (e) {
+        resumo.textContent = "Antena offline — node server.js";
+      }
+    }
+
+    function tick(ts) {
+      if (!visible()) { raf = 0; return; }
+      if (snap) {
+        snap.agents.forEach(a => {
+          if (a.state !== "ok") return;
+          if (!a._nextP) a._nextP = ts + 800 + Math.random() * 2200;
+          if (ts >= a._nextP) {
+            pulses.push({ id: a.id, t: 0 });
+            a._nextP = ts + Math.max(900, Math.min(4000, (a.every_min || 30) * 40));
+          }
+        });
+        pulses.forEach(p => { p.t += 0.016; });
+        const arrived = pulses.filter(p => p.t >= 1);
+        if (arrived.length) flash = 0.7;
+        pulses = pulses.filter(p => p.t < 1);
+        flash *= 0.88;
+        draw();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    function startLoops() {
+      stopLoops();
+      load();
+      raf = requestAnimationFrame(tick);
+      poll = setInterval(function () { if (visible()) load(); }, 15000);
+    }
+    function stopLoops() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      clearInterval(poll);
+      poll = 0;
+    }
+
+    window.openAgents = function () {
+      box.classList.add("on");
+      startLoops();
+    };
+    close.onclick = function () { box.classList.remove("on"); stopLoops(); };
+    document.addEventListener("visibilitychange", function () {
+      if (!box.classList.contains("on")) return;
+      if (document.visibilityState === "visible") startLoops();
+      else stopLoops();
+    });
+    runBtn.onclick = async function () {
+      const a = snap && snap.agents.find(x => x.id === sel);
+      if (!a || !a.run) return;
+      runBtn.disabled = true;
+      runBtn.textContent = "rodando… pode demorar";
+      try {
+        const r = await fetch(ANTENA + a.run.url, {
+          method: a.run.method || "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(a.run.body || {})
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok || data.ok === false) {
+          runBtn.textContent = data.error || "falhou";
+          return;
+        }
+        await load();
+        runBtn.textContent = "atualizado";
+      } catch (e) {
+        runBtn.textContent = "falhou";
+      } finally {
+        setTimeout(function () { runBtn.disabled = false; if (runBtn.classList.contains("show")) runBtn.textContent = "▶ rodar agora"; }, 1200);
+      }
+    };
+  })();
+})();
+</script>
+</body>
+</html>
